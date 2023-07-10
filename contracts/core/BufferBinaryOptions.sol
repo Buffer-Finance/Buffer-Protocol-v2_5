@@ -40,11 +40,15 @@ contract BufferBinaryOptions is
     bytes32 public constant ROUTER_ROLE = keccak256("ROUTER_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
+    constructor() ERC721("Buffer", "BFR") {
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+    }
+
     /************************************************
      *  INITIALIZATION FUNCTIONS
      ***********************************************/
 
-    constructor(
+    function initialize(
         ERC20 _tokenX,
         ILiquidityPool _pool,
         IOptionsConfig _config,
@@ -52,23 +56,27 @@ contract BufferBinaryOptions is
         AssetCategory _category,
         string memory _token0,
         string memory _token1
-    ) ERC721("Buffer", "BFR") {
-        tokenX = _tokenX;
-        pool = _pool;
-        config = _config;
-        referral = _referral;
-        assetCategory = _category;
-        token0 = _token0;
-        token1 = _token1;
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        emit CreateOptionsContract(
-            address(config),
-            address(pool),
-            address(tokenX),
-            token0,
-            token1,
-            assetCategory
-        );
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (address(tokenX) == address(0)) {
+            tokenX = _tokenX;
+            pool = _pool;
+            config = _config;
+            referral = _referral;
+            assetCategory = _category;
+            token0 = _token0;
+            token1 = _token1;
+            _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+            emit CreateOptionsContract(
+                address(config),
+                address(pool),
+                address(tokenX),
+                token0,
+                token1,
+                assetCategory
+            );
+        } else {
+            revert("Already initialized");
+        }
     }
 
     function assetPair() external view override returns (string memory) {

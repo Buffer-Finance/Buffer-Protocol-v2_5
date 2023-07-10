@@ -79,15 +79,18 @@ def contracts(
     referral_contract = ReferralStorage.deploy({"from": accounts[0]})
 
     binary_european_options_atm = BufferBinaryOptions.deploy(
-        tokenX.address,
+        {"from": accounts[0]}
+    )
+    binary_european_options_atm.initialize(
+    tokenX.address,
         binary_pool_atm.address,
         binary_options_config_atm.address,
         referral_contract.address,
         1,
         "ETH",
         "BTC",
-        {"from": accounts[0]},
-    )
+        {"from": accounts[0]}
+        )
     market_oi_config = MarketOIConfig.deploy(
         10e6, 2e6, binary_european_options_atm.address, {"from": accounts[0]}
     )
@@ -144,16 +147,18 @@ def contracts(
     binary_options_config_atm.setIV(1100)
 
     binary_european_options_atm_2 = BufferBinaryOptions.deploy(
+        
+        {"from": accounts[0]},
+    )
+  
+    binary_european_options_atm_2.initialize(
         tokenX.address,
         binary_pool_atm.address,
         binary_options_config_atm.address,
         referral_contract.address,
         1,
         "ETH",
-        "USD",
-        {"from": accounts[0]},
-    )
-  
+        "USD")
     return {
         "tokenX": tokenX,
         "referral_contract": referral_contract,

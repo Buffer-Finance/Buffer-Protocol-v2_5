@@ -9,7 +9,7 @@ from brownie import (
     OptionsConfig,
     BufferRouter,
     TraderNFT,
-    ReferralStorage,    
+    ReferralStorage,
     CreationWindow,
     ABDKMath64x64,
     OptionMath,
@@ -458,15 +458,7 @@ def main():
                 admin,
                 network,
                 BufferBinaryOptions,
-                [
-                    token_contract_address,
-                    pool_address,
-                    option_config.address,
-                    referral_storage_address,
-                    asset_pair["asset_category"],
-                    asset_pair["token1"],
-                    asset_pair["token2"],
-                ],
+                [],
             )
             save_flat(BufferBinaryOptions, "BufferBinaryOptions")
             if is_testnet_token:
@@ -550,6 +542,20 @@ def main():
         )
 
         ########### Approve the max amount ###########
+
+        transact(
+            options.address,
+            options.abi,
+            "initialize",
+            token_contract_address,
+            pool_address,
+            option_config.address,
+            referral_storage_address,
+            asset_pair["asset_category"],
+            asset_pair["token1"],
+            asset_pair["token2"],
+            sender=admin,
+        )
 
         transact(
             options.address,
