@@ -28,7 +28,7 @@ contract BufferRouter is AccessControl, IBufferRouter {
     mapping(address => bool) public contractRegistry;
     mapping(address => bool) public isKeeper;
     mapping(bytes => bool) public prevSignature;
-    mapping(address => mapping(uint256 => uint256)) public optionIdMapping;
+    mapping(address => mapping(uint256 => OptionInfo)) public optionIdMapping;
 
     constructor(
         address _publisher,
@@ -76,14 +76,18 @@ contract BufferRouter is AccessControl, IBufferRouter {
         _validateKeeper();
         for (uint32 index = 0; index < params.length; index++) {
             TradeParams memory currentParams = params[index];
+            (address signer, uint256 nonce) = getAccountMapping(
+                currentParams.user
+            );
             (bool isValid, string memory errorResaon) = verifyTrade(
-                currentParams
+                currentParams,
+                signer
             );
             if (!isValid) {
                 emit FailResolve(currentParams.queueId, errorResaon);
                 continue;
             }
-            _openTrade(currentParams);
+            _openTrade(currentParams, signer, nonce);
         }
     }
 
@@ -91,18 +95,17 @@ contract BufferRouter is AccessControl, IBufferRouter {
         _validateKeeper();
         // TODO: add validation to check if the user signed this
         for (uint32 index = 0; index < closeParams.length; index++) {
-            SignInfo memory userSignInfo = closeParams[index].userSignInfo;
-            CloseTradeParams memory params = closeParams[index]
-                .closeTradeParams;
-            uint256 queueId = optionIdMapping[params.targetContract][
-                params.optionId
-            ];
+            CloseAnytimeParams memory closeParam = closeParams[index];
+            CloseTradeParams memory params = closeParam.closeTradeParams;
+            OptionInfo memory optionInfo = optionIdMapping[
+                params.targetContract
+            ][params.optionId];
             IBufferBinaryOptions optionsContract = IBufferBinaryOptions(
                 params.targetContract
             );
             IBufferRouter.SignInfo memory publisherSignInfo = params
                 .publisherSignInfo;
-            QueuedTrade memory queuedTrade = queuedTrades[queueId];
+            QueuedTrade memory queuedTrade = queuedTrades[optionInfo.queueId];
             (, , , , , , , uint256 createdAt) = optionsContract.options(
                 params.optionId
             );
@@ -119,12 +122,14 @@ contract BufferRouter is AccessControl, IBufferRouter {
                 );
                 continue;
             }
+            (address signer, ) = getAccountMapping(queuedTrade.user);
+
             bool isUserSignValid = Validator.verifyCloseAnytime(
                 optionsContract.assetPair(),
                 publisherSignInfo.timestamp,
                 params.optionId,
-                userSignInfo.signature,
-                getAccountMapping(queuedTrade.user)
+                closeParam.userSignInfo.signature,
+                signer
             );
 
             bool isSignerVerifed = Validator.verifyPublisher(
@@ -157,7 +162,7 @@ contract BufferRouter is AccessControl, IBufferRouter {
                 !Validator.verifyMarketDirection(
                     params,
                     queuedTrade,
-                    getAccountMapping(queuedTrade.user)
+                    optionInfo.signer
                 )
             ) {
                 emit FailUnlock(
@@ -188,9 +193,10 @@ contract BufferRouter is AccessControl, IBufferRouter {
         uint32 arrayLength = uint32(optionData.length);
         for (uint32 i = 0; i < arrayLength; i++) {
             CloseTradeParams memory params = optionData[i];
-            uint256 queueId = optionIdMapping[params.targetContract][
-                params.optionId
-            ];
+            OptionInfo memory optionInfo = optionIdMapping[
+                params.targetContract
+            ][params.optionId];
+
             IBufferBinaryOptions optionsContract = IBufferBinaryOptions(
                 params.targetContract
             );
@@ -217,13 +223,13 @@ contract BufferRouter is AccessControl, IBufferRouter {
                 continue;
             }
 
-            QueuedTrade memory queuedTrade = queuedTrades[queueId];
+            QueuedTrade memory queuedTrade = queuedTrades[optionInfo.queueId];
 
             if (
                 !Validator.verifyMarketDirection(
                     params,
                     queuedTrade,
-                    getAccountMapping(queuedTrade.user)
+                    optionInfo.signer
                 )
             ) {
                 emit FailUnlock(
@@ -275,13 +281,16 @@ contract BufferRouter is AccessControl, IBufferRouter {
         );
     }
 
-    function getAccountMapping(address user) public view returns (address) {
-        (address oneCT, ) = accountRegistrar.accountMapping(user);
-        return oneCT;
+    function getAccountMapping(
+        address user
+    ) public view returns (address, uint256) {
+        (address oneCT, uint256 nonce) = accountRegistrar.accountMapping(user);
+        return (oneCT, nonce);
     }
 
     function verifyTrade(
-        TradeParams memory params
+        TradeParams memory params,
+        address tradeSigner
     ) public view returns (bool, string memory) {
         IBufferBinaryOptions optionsContract = IBufferBinaryOptions(
             params.targetContract
@@ -299,12 +308,7 @@ contract BufferRouter is AccessControl, IBufferRouter {
         if (prevSignature[userSignInfo.signature]) {
             return (false, "Router: Signature already used");
         }
-        if (
-            !Validator.verifyUserTradeParams(
-                params,
-                getAccountMapping(params.user)
-            )
-        ) {
+        if (!Validator.verifyUserTradeParams(params, tradeSigner)) {
             return (false, "Router: User signature didn't match");
         }
         if (
@@ -362,12 +366,14 @@ contract BufferRouter is AccessControl, IBufferRouter {
         return (true, "");
     }
 
-    function _openTrade(TradeParams memory params) internal {
+    function _openTrade(
+        TradeParams memory params,
+        address tradeSigner,
+        uint256 nonce
+    ) internal {
         IBufferBinaryOptions optionsContract = IBufferBinaryOptions(
             params.targetContract
         );
-        SignInfo memory publisherSignInfo = params.publisherSignInfo;
-        SignInfo memory userSignInfo = params.userSignInfo;
         IOptionsConfig config = IOptionsConfig(optionsContract.config());
         uint256 platformFee = config.platformFee();
 
@@ -380,7 +386,7 @@ contract BufferRouter is AccessControl, IBufferRouter {
                 0,
                 params.period,
                 params.allowPartialFill,
-                params.totalFee - platformFee,
+                params.totalFee,
                 params.user,
                 params.referralCode,
                 params.settlementFee
@@ -407,7 +413,7 @@ contract BufferRouter is AccessControl, IBufferRouter {
 
         uint256 optionId = optionsContract.createFromRouter(
             optionParams,
-            publisherSignInfo.timestamp
+            params.publisherSignInfo.timestamp
         );
         queuedTrades[params.queueId] = QueuedTrade({
             user: params.user,
@@ -425,8 +431,12 @@ contract BufferRouter is AccessControl, IBufferRouter {
             optionId: optionId,
             isEarlyCloseAllowed: config.isEarlyCloseAllowed()
         });
-        optionIdMapping[params.targetContract][optionId] = params.queueId;
-        prevSignature[userSignInfo.signature] = true;
+        optionIdMapping[params.targetContract][optionId] = OptionInfo({
+            queueId: params.queueId,
+            signer: tradeSigner,
+            nonce: nonce
+        });
+        prevSignature[params.userSignInfo.signature] = true;
 
         emit OpenTrade(
             params.user,

@@ -58,6 +58,12 @@ interface IBufferRouter {
         bool isEarlyCloseAllowed;
     }
 
+    struct OptionInfo {
+        uint256 queueId;
+        address signer;
+        uint256 nonce;
+    }
+
     struct SignInfo {
         bytes signature;
         uint256 timestamp;

@@ -158,7 +158,7 @@ def main():
         decimals = 6
         is_testnet_token = True
         nft_base_contract_address = ""
-        account_registrar = ""
+        account_registrar = "0xB0BA28f15Ebc9685ec89Cbe8C5E6e960d14f488b"
         booster = ""
         nft_contract_address = "0xf494F435cb2068559406C77b7271DD7d6aF5B860"
         token_contract_address = "0x4B5ed6b788e22D7bBe4790A4D6bE8f3A3FFC470E"
@@ -264,8 +264,8 @@ def main():
         booster = booster.address
 
     deploy_contract(admin, network, ABDKMath64x64, [])
-    deploy_contract(admin, network, OptionMath, [])
-    deploy_contract(admin, network, Validator, [])
+    option_math = deploy_contract(admin, network, OptionMath, [])
+    validator = deploy_contract(admin, network, Validator, [])
     # ABDKMath64x64.at("0x3C1eDC6e0f9813dB791E02DB1438F5F463873c02")
     # OptionMath.at("0x5C27ed7B5F6cC3374e45cC917e8Ce1AbCE715fCD")
     # Validator.at("0xfAcca5657C99ACa8Cf81179Bbe3789F17Fcf724D")
@@ -639,7 +639,20 @@ def main():
             option_config.address,
             option_config.abi,
             "setIV",
-            1100,
+            11000,
+            sender=admin,
+        )
+        transact(
+            option_config.address,
+            option_config.abi,
+            "toggleEarlyClose",
+            sender=admin,
+        )
+        transact(
+            option_config.address,
+            option_config.abi,
+            "setEarlyCloseThreshold",
+            0,
             sender=admin,
         )
 
@@ -663,8 +676,10 @@ def main():
         "pool_oi_config": pool_oi_config.address,
         "market_oi_config": market_oi_config.address,
         "option_storage": option_storage.address,
+        "account_registrar": account_registrar,
+        "booster": booster,
+        "validator": validator.address,
+        "option_math": option_math.address,
     }
 
     print(all_contractss)
-
-    # create_fe_json(all_contractss)

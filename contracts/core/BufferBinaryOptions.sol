@@ -443,7 +443,7 @@ contract BufferBinaryOptions is
 
     /**
      * @notice Calculates the discount to be applied on settlement fee based on
-     * NFT and referrer tiers
+     * referrer tiers
      */
     function _getReferralDiscount(
         address referrer,

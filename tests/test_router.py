@@ -276,6 +276,9 @@ def test_exceution(init, contracts, accounts, chain):
     optionId, queueId, trade_params = b.create(user, one_ct)
     expiration_time = b.binary_options.options(optionId)[-3]
     chain.sleep(expiration_time - chain.time() + 1)
+
+    one_ct = accounts.add()
+    b.reregister(user, one_ct)
     close_params = [
         optionId,
         b.binary_options,
@@ -288,37 +291,6 @@ def test_exceution(init, contracts, accounts, chain):
         ],
     ]
     txn = b.router.executeOptions([close_params], {"from": b.bot})
-    assert txn.events["Exercise"]["id"] == 0, "Wrong id"
-
-
-def test_early_close(init, contracts, accounts, chain):
-    b, user, one_ct, _ = init
-    b.binary_options_config.toggleEarlyClose()
-
-    closing_price = 300e8
-    optionId, queueId, trade_params = b.create(user, one_ct)
-    expiration_time = b.binary_options.options(optionId)[-3]
-    chain.sleep(expiration_time - chain.time() - 1)
-    current_time = int(chain.time())
-    signature = b.get_close_signature(
-        b.binary_options, current_time, optionId, one_ct.private_key
-    )
-    close_params = [
-        (
-            optionId,
-            b.binary_options,
-            closing_price,
-            b.is_above,
-            trade_params[-1],
-            [
-                b.get_signature(b.binary_options, current_time, closing_price),
-                current_time,
-            ],
-        ),
-        (signature, current_time),
-    ]
-    txn = b.router.closeAnytime([close_params], {"from": b.bot})
-    # print(txn.events)
     assert txn.events["Exercise"]["id"] == 0, "Wrong id"
 
 
@@ -354,5 +326,45 @@ def test_early_close_fail(init, contracts, accounts, chain):
     ), "Wrong reason"
 
 
-# Test delay in opening, in publisher info
-# Test strike validity
+def test_early_close(init, contracts, accounts, chain):
+    b, user, one_ct, _ = init
+    b.binary_options_config.toggleEarlyClose()
+
+    closing_price = 300e8
+    optionId, queueId, trade_params = b.create(user, one_ct)
+    expiration_time = b.binary_options.options(optionId)[-3]
+    chain.sleep(expiration_time - chain.time() - 1)
+    current_time = int(chain.time())
+
+    signature = b.get_close_signature(
+        b.binary_options, current_time, optionId, one_ct.private_key
+    )
+
+    close_params = [
+        (
+            optionId,
+            b.binary_options,
+            closing_price,
+            b.is_above,
+            trade_params[-1],
+            [
+                b.get_signature(b.binary_options, current_time, closing_price),
+                current_time,
+            ],
+        ),
+        (signature, current_time),
+    ]
+    chain.snapshot()
+    _one_ct = accounts.add()
+    b.reregister(user, _one_ct)
+
+    txn = b.router.closeAnytime([close_params], {"from": b.bot})
+    print(txn.events)
+    assert (
+        txn.events["FailUnlock"]["reason"] == "Router: User signature didn't match"
+    ), "Wrong reson"
+    chain.revert()
+
+    txn = b.router.closeAnytime([close_params], {"from": b.bot})
+    # print(txn.events)
+    assert txn.events["Exercise"]["id"] == 0, "Wrong id"

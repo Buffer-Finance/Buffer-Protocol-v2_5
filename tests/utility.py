@@ -1,7 +1,7 @@
 from enum import IntEnum
 
 import brownie
-from brownie import BufferBinaryOptions, OptionsConfig
+from brownie import BufferBinaryOptions, OptionsConfig, AccountRegistrar
 from eth_account import Account
 from eth_account.messages import encode_defunct
 from eth_account.messages import encode_structured_data
@@ -60,6 +60,8 @@ class BinaryOptionTesting(object):
         self.allow_partial_fill = True
         self.sf = 1500
         self.creation_window = creation_window
+        self.registrar = AccountRegistrar.at(self.router.accountRegistrar())
+
         self.trade_params = [
             self.total_fee,
             self.period,
@@ -403,6 +405,11 @@ class BinaryOptionTesting(object):
         signed_message = Account.sign_message(encode_defunct(msg_hash), key)
 
         return (to_32byte_hex(signed_message.signature), signature_time)
+
+    def reregister(self, user, one_ct):
+        self.registrar.deregisterAccount({"from": user})
+        txn = self.registrar.registerAccount(one_ct.address, {"from": user})
+        print(txn.events)
 
     def get_trade_params(
         self, user, one_ct, is_limit_order=False, params=None, queue_id=0
