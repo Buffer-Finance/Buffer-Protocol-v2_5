@@ -93,7 +93,6 @@ contract BufferRouter is AccessControl, IBufferRouter {
 
     function closeAnytime(CloseAnytimeParams[] memory closeParams) external {
         _validateKeeper();
-        // TODO: add validation to check if the user signed this
         for (uint32 index = 0; index < closeParams.length; index++) {
             CloseAnytimeParams memory closeParam = closeParams[index];
             CloseTradeParams memory params = closeParam.closeTradeParams;
@@ -126,7 +125,7 @@ contract BufferRouter is AccessControl, IBufferRouter {
 
             bool isUserSignValid = Validator.verifyCloseAnytime(
                 optionsContract.assetPair(),
-                publisherSignInfo.timestamp,
+                closeParam.userSignInfo.timestamp,
                 params.optionId,
                 closeParam.userSignInfo.signature,
                 signer
