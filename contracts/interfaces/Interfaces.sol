@@ -33,11 +33,21 @@ interface IAccountRegistrar {
         address oneCT;
         uint256 nonce;
     }
-    event RegisterAccount(address indexed account, address indexed oneCT);
+    event RegisterAccount(
+        address indexed user,
+        address indexed oneCT,
+        uint256 nonce
+    );
 
     function accountMapping(
         address
     ) external view returns (address oneCT, uint256 nonce);
+
+    function registerAccount(
+        address oneCT,
+        address user,
+        bytes memory signature
+    ) external;
 }
 
 interface IBufferRouter {
@@ -71,7 +81,6 @@ interface IBufferRouter {
 
     struct TradeParams {
         uint256 queueId;
-        address user;
         uint256 totalFee;
         uint256 period;
         address targetContract;
@@ -89,9 +98,25 @@ interface IBufferRouter {
         SignInfo publisherSignInfo;
     }
 
-    struct Trade {
-        uint256 queueId;
-        uint256 price;
+    struct Register {
+        address oneCT;
+        bytes signature;
+        bool shouldRegister;
+    }
+
+    struct Permit {
+        uint256 value;
+        uint256 deadline;
+        uint8 v;
+        bytes32 r;
+        bytes32 s;
+        bool shouldApprove;
+    }
+    struct OpenTxn {
+        TradeParams tradeParams;
+        Register register;
+        Permit permit;
+        address user;
     }
 
     struct AccountMapping {
