@@ -3,6 +3,7 @@ import copy
 from brownie import AccountRegistrar, Booster
 from utility import utility
 import pytest
+from custom_fixtures import init, early_close, init_lo, close
 
 ONE_DAY = 86400
 
@@ -11,34 +12,188 @@ def get_payout(sf):
     return 100 - ((sf * 2) / 100)
 
 
-@pytest.fixture()
-def init(contracts, accounts, chain):
-    b = utility(contracts, accounts, chain)
-    registrar = AccountRegistrar.at(b.router.accountRegistrar())
-    user = accounts.add()
-    one_ct = accounts.add()
-    registrar.registerAccount(one_ct.address, {"from": user})
-
-    b.tokenX.transfer(user, b.total_fee * 10, {"from": accounts[0]})
-    b.tokenX.approve(b.router, b.total_fee * 10, {"from": user})
-    chain.sleep(2)
-
-    return b, user, one_ct, b.get_trade_params(user, one_ct)[:-1]
+def get_publisher_signature(b, closing_price, time):
+    return [
+        b.get_signature(b.binary_options, time, closing_price),
+        time,
+    ]
 
 
-@pytest.fixture()
-def init_lo(contracts, accounts, chain):
-    b = utility(contracts, accounts, chain)
-    registrar = AccountRegistrar.at(b.router.accountRegistrar())
-    user = accounts.add()
-    one_ct = accounts.add()
-    registrar.registerAccount(one_ct.address, {"from": user})
+def test_user_params(init, contracts, accounts, chain):
+    b, user, one_ct, trade_params = init
+    user_1 = accounts.add()
 
-    b.tokenX.transfer(user, b.total_fee * 10, {"from": accounts[0]})
-    b.tokenX.approve(b.router, b.total_fee * 10, {"from": user})
-    chain.sleep(2)
+    # No balance
+    params = b.get_trade_params(user_1, one_ct)
+    txn = b.router.openTrades([*params[:-1]], {"from": b.bot})
+    assert (
+        txn.events["FailResolve"]["reason"] == "Router: Insufficient balance"
+    ), "Wrong reason"
 
-    return b, user, one_ct, b.get_trade_params(user, one_ct, True)[:-1]
+    # Wrong allowance
+    b.tokenX.transfer(user_1, b.total_fee * 10, {"from": accounts[0]})
+    params[0][2][-1] = False
+    txn = b.router.openTrades([*params[:-1]], {"from": b.bot})
+    assert (
+        txn.events["FailResolve"]["reason"] == "Router: Incorrect allowance"
+    ), "Wrong reason"
+
+    # Right init
+    txn = b.router.openTrades([*trade_params], {"from": b.bot})
+    assert (
+        b.router.getAccountMapping(user.address)[0] == one_ct.address
+    ), "Wrong mapping"
+    assert txn.events["OpenTrade"]["optionId"] == 0
+    assert txn.events["OpenTrade"]["queueId"] == 0
+    assert len(txn.events["Approval"]) == 3
+
+    # Should fail since the approval nonce is same
+    txn = b.router.openTrades([*trade_params], {"from": b.bot})
+    assert (
+        txn.events["FailResolve"]["reason"] == "ERC20Permit: invalid signature"
+    ), "Wrong reason"
+
+    # Same signature, same queueId
+    trade_params[0][2][-1] = False
+    txn = b.router.openTrades([*trade_params], {"from": b.bot})
+    assert (
+        txn.events["FailResolve"]["reason"] == "Router: Trade has already been opened"
+    ), "Wrong reason"
+
+    # Same signature, different queueId
+    trade_params[0][0][0] = 1
+    txn = b.router.openTrades([*trade_params], {"from": b.bot})
+    assert (
+        txn.events["FailResolve"]["reason"] == "Router: Signature already used"
+    ), "Wrong reason"
+
+    chain.sleep(1)
+    user_sign_info = b.get_user_signature(
+        b.trade_params[:8],
+        user.address,
+        one_ct.private_key,
+    )
+    chain.sleep(61)
+    sf_expiry = chain.time() + 3
+    sf_signature = b.get_sf_signature(b.binary_options, sf_expiry)
+    current_time = chain.time()
+
+    publisher_signature = [
+        b.get_signature(b.binary_options, current_time, b.trade_params[-2]),
+        current_time,
+    ]
+    trade_params[0][0][-1] = publisher_signature
+    trade_params[0][0][-2] = user_sign_info
+    trade_params[0][0][-3] = [sf_signature, sf_expiry]
+    txn = b.router.openTrades([*trade_params], {"from": b.bot})
+    assert (
+        txn.events["FailResolve"]["reason"]
+        == "Router: Invalid user signature timestamp"
+    ), "Wrong reason"
+
+    # SHould fail if approval deadline exceeds
+    params = b.get_trade_params(user, one_ct, queue_id=1)
+    chain.sleep(51)
+    txn = b.router.openTrades([*params[:-1]], {"from": b.bot})
+    assert (
+        txn.events["FailResolve"]["reason"] == "ERC20Permit: expired deadline"
+    ), "Wrong reason"
+
+    # Seconf buy should pass
+    params[0][2][-1] = False
+    txn = b.router.openTrades([*params[:-1]], {"from": b.bot})
+    assert txn.events["OpenTrade"]["optionId"] == 1
+    assert txn.events["OpenTrade"]["queueId"] == 1
+    assert len(txn.events["Approval"]) == 2
+
+
+def test_lo(init_lo, contracts, accounts, chain):
+    b, user, one_ct, trade_params = init_lo
+    txn = b.router.openTrades([*trade_params], {"from": b.bot})
+    assert txn.events["OpenTrade"]["optionId"] == 0
+    assert txn.events["OpenTrade"]["queueId"] == 0
+
+
+def test_wrong_sf(init, contracts, accounts, chain):
+    b, user, one_ct, trade_params = init
+    sf_expiry = chain.time() + 3
+
+    # Wrong asset
+    binary_european_options_atm_2 = contracts["binary_european_options_atm_2"]
+    sf_signature = b.get_sf_signature(binary_european_options_atm_2, sf_expiry)
+    trade_params[0][0][-3] = [sf_signature, sf_expiry]
+    txn = b.router.openTrades([*trade_params], {"from": b.bot})
+    assert (
+        txn.events["FailResolve"]["reason"] == "Router: Wrong settlement fee"
+    ), "Wrong reason"
+
+    # Wrong time
+    chain.sleep(4)
+    sf_signature = b.get_sf_signature(b.binary_options, sf_expiry)
+    trade_params[0][2][-1] = False
+    trade_params[0][0][-3] = [sf_signature, sf_expiry]
+    txn = b.router.openTrades([*trade_params], {"from": b.bot})
+    assert (
+        txn.events["FailResolve"]["reason"] == "Router: Settlement fee has expired"
+    ), "Wrong reason"
+
+
+def test_early_close(early_close, contracts, accounts, chain):
+    b, close_params, option, user = early_close
+
+    # Early close not disabled should fail
+    txn = b.router.closeAnytime([close_params], {"from": b.bot})
+    assert txn.events["FailUnlock"]["optionId"] == 0, "Wrong id"
+    assert (
+        txn.events["FailUnlock"]["reason"] == "Router: Early close is not allowed"
+    ), "Wrong reason"
+
+    # Early close before threshold should fail
+    b.binary_options_config.toggleEarlyClose()
+    b.binary_options_config.setEarlyCloseThreshold(300)
+    txn = b.router.closeAnytime([close_params], {"from": b.bot})
+    assert txn.events["FailUnlock"]["optionId"] == 0, "Wrong id"
+    assert (
+        txn.events["FailUnlock"]["reason"] == "Router: Early close is not allowed"
+    ), "Wrong reason"
+
+    # Early close after threshold should succeed
+    chain.sleep(300 + 1)
+    txn = b.router.closeAnytime([close_params], {"from": b.bot})
+    assert txn.events["Exercise"]["id"] == 0, "Wrong id"
+    assert txn.events["Transfer"][0]["value"] < option[2], "Wrong payout"
+    assert txn.events["Transfer"][0]["to"] == user, "Wrong user"
+
+    # Wrong onc_ct should fail
+    _one_ct = accounts.add()
+    b.reregister(user, _one_ct)
+
+    txn = b.router.closeAnytime([close_params], {"from": b.bot})
+    assert (
+        txn.events["FailUnlock"]["reason"] == "Router: User signature didn't match"
+    ), "Wrong reson"
+
+
+def test_creation_window(init, contracts, accounts, chain):
+    b, user, one_ct, _ = init
+    period = 5 * 60
+    b.check_trading_window(6, 17, 0, period, False)  # Saturday 17:00 (5m)
+    b.check_trading_window(0, 15, 0, period, False)  # Sunday 15:00 (5m)
+    b.check_trading_window(0, 16, 59, period, False)  # Sunday 16:59 (5m)
+    b.check_trading_window(0, 17, 0, period, True)  # Sunday 17:00   (5m)
+    b.check_trading_window(0, 21, 59, period, False)  # Sunday 21:59 (5m)
+    b.check_trading_window(0, 22, 0, period, False)  # Sunday 22:00  (5m)
+    b.check_trading_window(0, 23, 0, period, True)  # Sunday 23:00   (5m)
+    b.check_trading_window(0, 23, 0, 23 * 3600, False)  # Sunday 23:00 (23h)
+    b.check_trading_window(0, 23, 0, (23 * 3600) - 1, True)  # Sunday 23:00 (22.59)
+    b.check_trading_window(1, 21, 30, (30 * 60), False)  # Monday 21:30 (30m)
+    b.check_trading_window(1, 21, 30, (30 * 60) - 1, True)  # Monday 21:30 (29.59m)
+    b.check_trading_window(1, 22, 0, (30 * 60), False)  # Monday 22:00 (30m)
+    b.check_trading_window(1, 23, 0, (2 * 3600), True)  # Monday 23:00 (2h)
+    b.check_trading_window(2, 1, 0, (2 * 3600), True)  # Tuesday 1:00 (2h)
+    b.check_trading_window(5, 16, 30, (30 * 60), False)  # Friday 16:30 (30m)
+    b.check_trading_window(5, 16, 30, (30 * 60) - 1, True)  # Friday 16:30 (29.59m)
+    b.check_trading_window(5, 18, 0, (30 * 60), False)  # Friday 18:00 (30m)
 
 
 def test_referral(init, contracts, accounts, chain):
@@ -62,7 +217,7 @@ def test_referral(init, contracts, accounts, chain):
         {"from": referrer},
     )
     trade_params = b.get_trade_params(user, one_ct, True, params=trade_params)[:-1]
-    txn = b.router.openTrades([trade_params], {"from": b.bot})
+    txn = b.router.openTrades([*trade_params], {"from": b.bot})
     assert txn.events["OpenTrade"]["optionId"] == 0
     assert txn.events["OpenTrade"]["queueId"] == 0
     print(b.binary_options.options(txn.events["OpenTrade"]["optionId"]))
@@ -161,210 +316,50 @@ def test_boost_with_ref(init, contracts, accounts, chain):
     assert option[2] > min_payout, "Wrong payout"
 
 
-def test_user_params(init, contracts, accounts, chain):
-    b, user, one_ct, trade_params = init
-    user_sign_info = b.get_user_signature(
-        b.trade_params[:8],
-        user.address,
-        user.private_key,
-    )
-    wrong_trade_params = trade_params[:]
-    wrong_trade_params[-2] = user_sign_info
-
-    # Wrong pk
-    txn = b.router.openTrades([wrong_trade_params], {"from": b.bot})
-    assert (
-        txn.events["FailResolve"]["reason"] == "Router: User signature didn't match"
-    ), "Wrong reason"
-    chain.sleep(2)
-    # Right init
-    txn = b.router.openTrades([trade_params], {"from": b.bot})
-    assert txn.events["OpenTrade"]["optionId"] == 0
-    assert txn.events["OpenTrade"]["queueId"] == 0
-    # print(txn.events["OpenTrade"])
-    # print(b.router.optionIdMapping(b.binary_options, 0))
-    # print(b.router.queuedTrades(0))
-
-    # Same signature, same queueId
-    txn = b.router.openTrades([trade_params], {"from": b.bot})
-    assert (
-        txn.events["FailResolve"]["reason"] == "Router: Trade has already been opened"
-    ), "Wrong reason"
-
-    # Same signature, different queueId
-    trade_params[0] = 1
-    txn = b.router.openTrades([trade_params], {"from": b.bot})
-    assert (
-        txn.events["FailResolve"]["reason"] == "Router: Signature already used"
-    ), "Wrong reason"
-
-    chain.sleep(1)
-    user_sign_info = b.get_user_signature(
-        b.trade_params[:8],
-        user.address,
-        one_ct.private_key,
-    )
-    chain.sleep(61)
-    sf_expiry = chain.time() + 3
-    sf_signature = b.get_sf_signature(b.binary_options, sf_expiry)
+def test_exceution(close, contracts, accounts, chain):
+    b, params, closing_price, user, optionId = close
     current_time = chain.time()
-
-    publisher_signature = [
-        b.get_signature(b.binary_options, current_time, b.trade_params[-2]),
-        current_time,
-    ]
-    trade_params[-1] = publisher_signature
-    trade_params[-2] = user_sign_info
-    trade_params[-3] = [sf_signature, sf_expiry]
-    txn = b.router.openTrades([trade_params], {"from": b.bot})
-    assert (
-        txn.events["FailResolve"]["reason"]
-        == "Router: Invalid user signature timestamp"
-    ), "Wrong reason"
-
-
-def test_lo(init_lo, contracts, accounts, chain):
-    b, user, one_ct, trade_params = init_lo
-
-    chain.sleep(3600 * 4)
-    txn = b.router.openTrades([trade_params], {"from": b.bot})
-    assert (
-        txn.events["FailResolve"]["reason"] == "Router: Settlement fee has expired"
-    ), "Wrong reason"
-    current_time = chain.time()
-    sf_expiry = chain.time() + 3
-    sf_signature = b.get_sf_signature(b.binary_options, sf_expiry)
-    publisher_signature = [
-        b.get_signature(b.binary_options, current_time, b.trade_params[-2]),
-        current_time,
-    ]
-    trade_params[-1] = publisher_signature
-    trade_params[-3] = [sf_signature, sf_expiry]
-    txn = b.router.openTrades([trade_params], {"from": b.bot})
-    assert txn.events["OpenTrade"]["optionId"] == 0
-    assert txn.events["OpenTrade"]["queueId"] == 0
-    # print(txn.events["OpenTrade"])
-    # print("limit_order", b.router.queuedTrades(0))
-
-
-def test_wrong_sf(init, contracts, accounts, chain):
-    b, user, one_ct, trade_params = init
-    sf_expiry = chain.time() + 3
-
-    # Wrong asset
-    binary_european_options_atm_2 = contracts["binary_european_options_atm_2"]
-    sf_signature = b.get_sf_signature(binary_european_options_atm_2, sf_expiry)
-    trade_params[-3] = [sf_signature, sf_expiry]
-    txn = b.router.openTrades([trade_params], {"from": b.bot})
-    assert (
-        txn.events["FailResolve"]["reason"] == "Router: Wrong settlement fee"
-    ), "Wrong reason"
-
-    # Wrong time
-    chain.sleep(4)
-    sf_signature = b.get_sf_signature(b.binary_options, sf_expiry)
-    trade_params[-3] = [sf_signature, sf_expiry]
-    txn = b.router.openTrades([trade_params], {"from": b.bot})
-    assert (
-        txn.events["FailResolve"]["reason"] == "Router: Settlement fee has expired"
-    ), "Wrong reason"
-
-
-def test_exceution(init, contracts, accounts, chain):
-    b, user, one_ct, _ = init
-    closing_price = 300e8
-    optionId, queueId, trade_params = b.create(user, one_ct)
     expiration_time = b.binary_options.options(optionId)[-3]
-    chain.sleep(expiration_time - chain.time() + 1)
+    option = b.binary_options.options(optionId)
 
-    one_ct = accounts.add()
-    b.reregister(user, one_ct)
+    # SHould fail if the price timestamp is not equal to expiration
     close_params = [
-        optionId,
-        b.binary_options,
-        closing_price,
-        b.is_above,
-        trade_params[-1],
-        [
-            b.get_signature(b.binary_options, expiration_time, closing_price),
-            expiration_time,
-        ],
+        *params,
+        get_publisher_signature(b, closing_price, current_time),
     ]
     txn = b.router.executeOptions([close_params], {"from": b.bot})
-    assert txn.events["Exercise"]["id"] == 0, "Wrong id"
+    assert txn.events["FailUnlock"]["reason"] == "Router: Wrong price"
 
-
-def test_early_close_fail(init, contracts, accounts, chain):
-    b, user, one_ct, _ = init
-
-    closing_price = 300e8
-    optionId, queueId, trade_params = b.create(user, one_ct)
-    expiration_time = b.binary_options.options(optionId)[-3]
-    chain.sleep(expiration_time - chain.time() - 1)
-    current_time = int(chain.time())
-    signature = b.get_close_signature(
-        b.binary_options, current_time, optionId, one_ct.private_key
-    )
+    # SHould fail if market direction is wrong
+    params[3] = not b.is_above
     close_params = [
-        (
-            optionId,
-            b.binary_options,
-            closing_price,
-            b.is_above,
-            trade_params[-1],
-            [
-                b.get_signature(b.binary_options, current_time, closing_price),
-                current_time,
-            ],
-        ),
-        (signature, current_time),
+        *params,
+        get_publisher_signature(b, closing_price, expiration_time),
     ]
-    txn = b.router.closeAnytime([close_params], {"from": b.bot})
-    assert txn.events["FailUnlock"]["optionId"] == 0, "Wrong id"
-    assert (
-        txn.events["FailUnlock"]["reason"] == "Router: Early close is not allowed"
-    ), "Wrong reason"
+    txn = b.router.executeOptions([close_params], {"from": b.bot})
+    assert txn.events["FailUnlock"]["reason"] == "Router: Wrong market direction"
 
+    # SHould fail before the expiration time
+    params[3] = b.is_above
+    close_params = [*params, get_publisher_signature(b, closing_price, expiration_time)]
+    txn = b.router.executeOptions([close_params], {"from": b.bot})
+    assert txn.events["FailUnlock"]["reason"] == "Router: Wrong closing time"
 
-def test_early_close(init, contracts, accounts, chain):
-    b, user, one_ct, _ = init
-    b.binary_options_config.toggleEarlyClose()
+    # Time travel to the expiration time
+    chain.sleep(expiration_time - chain.time() + 1)
 
-    closing_price = 300e8
-    optionId, queueId, trade_params = b.create(user, one_ct)
-    expiration_time = b.binary_options.options(optionId)[-3]
-    chain.sleep(expiration_time - chain.time() - 1)
-    current_time = int(chain.time())
-
-    signature = b.get_close_signature(
-        b.binary_options, current_time, optionId, one_ct.private_key
-    )
-
-    close_params = [
-        (
-            optionId,
-            b.binary_options,
-            closing_price,
-            b.is_above,
-            trade_params[-1],
-            [
-                b.get_signature(b.binary_options, current_time, closing_price),
-                current_time,
-            ],
-        ),
-        (signature, current_time),
-    ]
+    # Should succeed after the time lapse
     chain.snapshot()
+    txn = b.router.executeOptions([close_params], {"from": b.bot})
+    chain.revert()
+
+    assert txn.events["Exercise"]["id"] == 0, "Wrong id"
+    assert txn.events["Transfer"][0]["value"] == option[2], "Wrong payout"
+    assert txn.events["Transfer"][0]["to"] == user, "Wrong user"
+
+    # Should succeed even after one_ct change
     _one_ct = accounts.add()
     b.reregister(user, _one_ct)
 
-    txn = b.router.closeAnytime([close_params], {"from": b.bot})
-    print(txn.events)
-    assert (
-        txn.events["FailUnlock"]["reason"] == "Router: User signature didn't match"
-    ), "Wrong reson"
-    chain.revert()
-
-    txn = b.router.closeAnytime([close_params], {"from": b.bot})
-    # print(txn.events)
+    txn = b.router.executeOptions([close_params], {"from": b.bot})
     assert txn.events["Exercise"]["id"] == 0, "Wrong id"

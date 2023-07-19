@@ -4,25 +4,25 @@ pragma solidity 0.8.4;
 
 import "../interfaces/Interfaces.sol";
 import "../Libraries/Validator.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 
 /**
  * @author Heisenberg
  * @notice Buffer Options Router Contract
  */
-contract AccountRegistrar is IAccountRegistrar, Ownable {
+contract AccountRegistrar is IAccountRegistrar, AccessControl {
     mapping(address => AccountMapping) public override accountMapping;
-    IBufferRouter public router;
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
-    function setRouter(address _router) external onlyOwner {
-        router = IBufferRouter(_router);
+    constructor() {
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     function registerAccount(
         address oneCT,
         address user,
         bytes memory signature
-    ) external override onlyRouter {
+    ) external override onlyRole(ADMIN_ROLE) {
         if (accountMapping[user].oneCT == oneCT) {
             return;
         }
@@ -38,7 +38,7 @@ contract AccountRegistrar is IAccountRegistrar, Ownable {
     function deregisterAccount(
         address user,
         bytes memory signature
-    ) external onlyRouter {
+    ) external onlyRole(ADMIN_ROLE) {
         if (accountMapping[user].oneCT == address(0)) {
             return;
         }
@@ -51,10 +51,5 @@ contract AccountRegistrar is IAccountRegistrar, Ownable {
             nonce: nonce + 1,
             oneCT: address(0)
         });
-    }
-
-    modifier onlyRouter() {
-        require(msg.sender == address(router));
-        _;
     }
 }
