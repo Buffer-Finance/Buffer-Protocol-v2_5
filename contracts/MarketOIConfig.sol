@@ -4,9 +4,9 @@ import "./interfaces/Interfaces.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract MarketOIConfig is Ownable {
-    uint256 private _maxMarketOI;
-    uint256 private _maxTradeSize;
-    IBufferBinaryOptions private _marketContract;
+    uint256 public _maxMarketOI;
+    uint256 public _maxTradeSize;
+    IBufferBinaryOptions public _marketContract;
 
     constructor(
         uint256 maxMarketOI,

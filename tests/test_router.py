@@ -1,6 +1,12 @@
 from enum import IntEnum
 import copy
-from brownie import AccountRegistrar, Booster
+from brownie import (
+    AccountRegistrar,
+    Booster,
+    PoolOIConfig,
+    MarketOIConfig,
+    PoolOIStorage,
+)
 from utility import utility
 import pytest
 from custom_fixtures import init, early_close, init_lo, close
@@ -40,6 +46,7 @@ def test_user_params(init, contracts, accounts, chain):
 
     # Right init
     txn = b.router.openTrades([*trade_params], {"from": b.bot})
+    # print(txn.events)
     assert (
         b.router.getAccountMapping(user.address)[0] == one_ct.address
     ), "Wrong mapping"
@@ -99,19 +106,50 @@ def test_user_params(init, contracts, accounts, chain):
         txn.events["FailResolve"]["reason"] == "ERC20Permit: expired deadline"
     ), "Wrong reason"
 
-    # Seconf buy should pass
+    # Second buy should pass
     params[0][2][-1] = False
     txn = b.router.openTrades([*params[:-1]], {"from": b.bot})
     assert txn.events["OpenTrade"]["optionId"] == 1
     assert txn.events["OpenTrade"]["queueId"] == 1
     assert len(txn.events["Approval"]) == 2
 
+    # Should fail if the allowance is exhausted
+    trade_params = b.trade_params
+    trade_params[0] = int(3e6)
+    params = b.get_trade_params(user, one_ct, params=trade_params, queue_id=2)
+    params[0][2][-1] = False
+    txn = b.router.openTrades([*params[:-1]], {"from": b.bot})
+    assert (
+        txn.events["FailResolve"]["reason"] == "Router: Incorrect allowance"
+    ), "Wrong reason"
+
+    # Should pass with added allowance
+    params[0][2][-1] = True
+    txn = b.router.openTrades([*params[:-1]], {"from": b.bot})
+    total_amount_deducted = sum(
+        [x["value"] if x["from"] == user.address else 0 for x in txn.events["Transfer"]]
+    )
+    assert txn.events["OpenTrade"]["optionId"] == 2
+    assert txn.events["OpenTrade"]["queueId"] == 2
+    assert (
+        total_amount_deducted == trade_params[0] + b.binary_options_config.platformFee()
+    ), "Wrong amount deducted"
+
 
 def test_lo(init_lo, contracts, accounts, chain):
     b, user, one_ct, trade_params = init_lo
+    chain.snapshot()
     txn = b.router.openTrades([*trade_params], {"from": b.bot})
+    chain.revert()
     assert txn.events["OpenTrade"]["optionId"] == 0
     assert txn.events["OpenTrade"]["queueId"] == 0
+
+    # Should fail after the lo expiration
+    chain.sleep(31)
+    txn = b.router.openTrades([*trade_params], {"from": b.bot})
+    assert (
+        txn.events["FailResolve"]["reason"] == "Router: Limit order has already expired"
+    ), "Wrong reason"
 
 
 def test_wrong_sf(init, contracts, accounts, chain):
@@ -249,15 +287,15 @@ def test_boost(init, contracts, accounts, chain):
         min_payout = option[-2] + (option[-2] * base_payout) / 100
         return min_payout, option[2]
 
-    optionId, _, _ = b.create(user, one_ct, queue_id=0)
+    optionId, _, _, _ = b.create(user, one_ct, queue_id=0)
     chain.sleep(1)
     min_payout, payout = check_payout(optionId)
     assert payout > min_payout, "Wrong payout"
-    optionId, _, _ = b.create(user, one_ct, queue_id=1)
+    optionId, _, _, _ = b.create(user, one_ct, queue_id=1)
     chain.sleep(1)
     min_payout, payout = check_payout(optionId)
     assert payout > min_payout, "Wrong payout"
-    optionId, _, _ = b.create(user, one_ct, queue_id=2)
+    optionId, _, _, _ = b.create(user, one_ct, queue_id=2)
     chain.sleep(1)
     min_payout, payout = check_payout(optionId)
     assert payout == min_payout, "Wrong payout"
@@ -308,12 +346,267 @@ def test_boost_with_ref(init, contracts, accounts, chain):
     booster.buy(b.tokenX.address, 0, {"from": user})
     boost = base_sf - b.binary_options.getSettlementFeePercentage(user, user, base_sf)
 
-    optionId, _, _ = b.create(user, one_ct, queue_id=0, params=trade_params)
+    optionId, _, _, _ = b.create(user, one_ct, queue_id=0, params=trade_params)
     option = b.binary_options.options(optionId)
     min_payout = option[-2] + (
         option[-2] * get_payout(base_sf - boost - ref_discount) / 100
     )
     assert option[2] > min_payout, "Wrong payout"
+
+
+def test_pool_oi(init, contracts, accounts, chain):
+    b, user, one_ct, trade_params = init
+    chain.sleep(1)
+    chain.mine(1)
+    pool_oi_config_contract = PoolOIConfig.at(
+        b.binary_options_config.poolOIConfigContract()
+    )
+    market_oi_config_contract = MarketOIConfig.at(
+        b.binary_options_config.marketOIConfigContract()
+    )
+    pool_oi_storage_contract = PoolOIStorage.at(
+        b.binary_options_config.poolOIStorageContract()
+    )
+    pool_oi_config_contract.setMaxPoolOI(7e6)
+    market_oi_config_contract.setMaxMarketOI(11e6)
+    market_oi_config_contract.setMaxTradeSize(6e6)
+
+    def get_oi():
+        return (
+            pool_oi_config_contract.getMaxPoolOI(),
+            pool_oi_config_contract.getPoolOICap(),
+            pool_oi_storage_contract.totalPoolOI(),
+            market_oi_config_contract.getMaxMarketOI(b.binary_options.totalMarketOI()),
+            market_oi_config_contract.getMarketOICap(),
+            b.binary_options.totalMarketOI(),
+        )
+
+    def print_oi():
+        (
+            get_max_pool_oi,
+            get_pool_oi_cap,
+            get_total_pool_oi,
+            get_max_market_oi,
+            get_market_oi_cap,
+            get_total_market_oi,
+        ) = get_oi()
+        print(get_max_pool_oi / 1e6, "max pool oi")
+        print(get_pool_oi_cap / 1e6, "pool oi cap")
+        print(get_total_pool_oi / 1e6, "total pool oi")
+        print(get_max_market_oi / 1e6, "max market oi")
+        print(get_market_oi_cap / 1e6, "market oi cap")
+        print(get_total_market_oi / 1e6, "total market oi")
+
+    # print_oi()
+    # print(b.router.queuedTrades(0))
+    # Max Pool oi > trade size
+    trade_params = b.trade_params
+    fee = int(4e6)
+    trade_params[0] = fee  # total_fee
+    _, _, _, _, _, tmi_before = get_oi()
+    optionId, queueId, trade_params, txn = b.create(
+        user, one_ct, params=trade_params, queue_id=1
+    )
+    _, _, _, _, _, tmi_after = get_oi()
+    option = b.binary_options.options(optionId)
+    uint_fee, _, _ = b.binary_options.fees(int(1e6), user, "", 15e2)
+    assert option[-2] == fee, "Wrong fee"
+    assert option[2] == (fee * 1e6) // uint_fee, "Wrong amount"
+    assert (
+        txn.events["UpdatePoolOI"]["isIncreased"]
+        and txn.events["UpdatePoolOI"]["interest"] == fee
+    ), "Wrong event"
+    assert tmi_after == tmi_before + fee, "Wrong total market interest"
+
+    # Max Pool oi  < current pool oi + trade size
+    chain.sleep(1)
+    trade_params = b.trade_params
+    fee = int(4e6)
+    trade_params[0] = fee  # total_fee
+    max_pool_oi, _, _, _, _, tmi_before = get_oi()
+    optionId, queueId, trade_params, txn = b.create(
+        user, one_ct, params=trade_params, queue_id=2
+    )
+    _, _, _, _, _, tmi_after = get_oi()
+    option = b.binary_options.options(optionId)
+    uint_fee, _, _ = b.binary_options.fees(int(1e6), user, "", 15e2)
+    assert option[-2] == max_pool_oi, "Wrong fee"
+    assert option[2] == (max_pool_oi * 1e6) // uint_fee, "Wrong amount"
+    assert (
+        txn.events["UpdatePoolOI"]["isIncreased"]
+        and txn.events["UpdatePoolOI"]["interest"] == max_pool_oi
+    ), "Wrong event"
+    assert tmi_after == tmi_before + max_pool_oi, "Wrong total market interest"
+    # print_oi()
+
+
+def test_market_oi(init, contracts, accounts, chain):
+    b, user, one_ct, trade_params = init
+    pool_oi_config_contract = PoolOIConfig.at(
+        b.binary_options_config.poolOIConfigContract()
+    )
+    market_oi_config_contract = MarketOIConfig.at(
+        b.binary_options_config.marketOIConfigContract()
+    )
+    pool_oi_storage_contract = PoolOIStorage.at(
+        b.binary_options_config.poolOIStorageContract()
+    )
+    pool_oi_config_contract.setMaxPoolOI(10e6)
+    market_oi_config_contract.setMaxMarketOI(4e6)
+    market_oi_config_contract.setMaxTradeSize(2e6)
+
+    def get_oi():
+        return (
+            pool_oi_config_contract.getMaxPoolOI(),
+            pool_oi_config_contract.getPoolOICap(),
+            pool_oi_storage_contract.totalPoolOI(),
+            market_oi_config_contract.getMaxMarketOI(b.binary_options.totalMarketOI()),
+            market_oi_config_contract.getMarketOICap(),
+            b.binary_options.totalMarketOI(),
+        )
+
+    def print_oi():
+        (
+            get_max_pool_oi,
+            get_pool_oi_cap,
+            get_total_pool_oi,
+            get_max_market_oi,
+            get_market_oi_cap,
+            get_total_market_oi,
+        ) = get_oi()
+        print(get_max_pool_oi / 1e6, "max pool oi")
+        print(get_pool_oi_cap / 1e6, "pool oi cap")
+        print(get_total_pool_oi / 1e6, "total pool oi")
+        print(get_max_market_oi / 1e6, "max market oi")
+        print(get_market_oi_cap / 1e6, "market oi cap")
+        print(get_total_market_oi / 1e6, "total market oi")
+
+    # print_oi()
+    # print_oi()
+    # print(b.router.queuedTrades(0))
+    queue_id = 1
+    # Max Trade Size > trade size
+    _, _, _, _, _, tmi_before = get_oi()
+    optionId, queueId, trade_params, txn = b.create(user, one_ct, queue_id=queue_id)
+    _, _, _, _, _, tmi_after = get_oi()
+    option = b.binary_options.options(optionId)
+    uint_fee, _, _ = b.binary_options.fees(int(1e6), user, "", 15e2)
+
+    assert option[-2] == b.total_fee, "Wrong fee"
+    assert option[2] == (b.total_fee * 1e6) // uint_fee, "Wrong amount"
+    assert (
+        txn.events["UpdatePoolOI"]["isIncreased"]
+        and txn.events["UpdatePoolOI"]["interest"] == b.total_fee
+    ), "Wrong event"
+    assert tmi_after == tmi_before + b.total_fee, "Wrong total market interest"
+    # print_oi()
+
+    # Max Trade Size < trade size & allowed partial fill false
+    queue_id += 1
+    trade_params = b.trade_params
+    trade_params[0] = int(3e6)  # total_fee
+    trade_params[-5] = False  # allow_partial_fill
+    trade_params = b.get_trade_params(
+        user, one_ct, True, params=trade_params, queue_id=queue_id
+    )[:-1]
+    max_market_oi = market_oi_config_contract.getMaxMarketOI(
+        b.binary_options.totalMarketOI()
+    )
+    chain.snapshot()
+    txn = b.router.openTrades([*trade_params], {"from": b.bot})
+    chain.revert()
+    assert txn.events["CancelTrade"]["reason"] == "O29", "Wrong reason"
+
+    # Max Trade Size < trade size
+    trade_params = b.trade_params
+    trade_params[0] = int(3e6)  # total_fee
+    trade_params[-5] = True  # allow_partial_fill
+    trade_params = b.get_trade_params(
+        user, one_ct, True, params=trade_params, queue_id=queue_id
+    )[:-1]
+    max_market_oi = market_oi_config_contract.getMaxMarketOI(
+        b.binary_options.totalMarketOI()
+    )
+    _, _, _, _, _, tmi_before = get_oi()
+    txn = b.router.openTrades([*trade_params], {"from": b.bot})
+    _, _, _, _, _, tmi_after = get_oi()
+    option_id = txn.events["OpenTrade"]["optionId"]
+    option = b.binary_options.options(option_id)
+
+    print(option)
+
+    assert option[-2] == max_market_oi, "Wrong fee"
+    assert option[2] == (max_market_oi * 1e6) // uint_fee, "Wrong amount"
+    assert (
+        txn.events["UpdatePoolOI"]["isIncreased"]
+        and txn.events["UpdatePoolOI"]["interest"] == max_market_oi
+    ), "Wrong event"
+    assert tmi_after == tmi_before + max_market_oi, "Wrong total market interest"
+    # print_oi()
+
+    # Market oi cap < trade size + total market oi
+    queue_id += 1
+    trade_params = b.trade_params
+    trade_params[0] = int(2e6)  # total_fee
+    trade_params = b.get_trade_params(
+        user, one_ct, True, params=trade_params, queue_id=queue_id
+    )[:-1]
+    max_market_oi = market_oi_config_contract.getMaxMarketOI(
+        b.binary_options.totalMarketOI()
+    )
+    _, _, _, _, _, tmi_before = get_oi()
+    txn = b.router.openTrades([*trade_params], {"from": b.bot})
+    _, _, _, _, _, tmi_after = get_oi()
+    option_id = txn.events["OpenTrade"]["optionId"]
+    option = b.binary_options.options(option_id)
+
+    assert option[-2] == max_market_oi, "Wrong fee"
+    assert option[2] == (max_market_oi * 1e6) // uint_fee, "Wrong amount"
+    assert (
+        txn.events["UpdatePoolOI"]["isIncreased"]
+        and txn.events["UpdatePoolOI"]["interest"] == max_market_oi
+    ), "Wrong event"
+    print(option)
+    assert tmi_after == tmi_before + max_market_oi, "Wrong total market interest"
+    # print_oi()
+
+    # Buying after the market oi cap is reached should fail
+    queue_id += 1
+    trade_params = b.trade_params
+    trade_params[0] = int(2e6)  # total_fee
+    chain.sleep(1)
+    trade_params = b.get_trade_params(
+        user, one_ct, True, params=trade_params, queue_id=queue_id
+    )[:-1]
+    max_market_oi = market_oi_config_contract.getMaxMarketOI(
+        b.binary_options.totalMarketOI()
+    )
+    txn = b.router.openTrades([*trade_params], {"from": b.bot})
+    assert txn.events["CancelTrade"]["reason"] == "O36", "Wrong reason"
+    # print_oi()
+
+    # Buying from another market should succeed
+    trade_params = b.trade_params
+    trade_params[2] = b.binary_options_2.address
+    max_market_oi = market_oi_config_contract.getMaxMarketOI(
+        b.binary_options_2.totalMarketOI()
+    )
+    option_id, queueId, trade_params, txn = b.create(
+        user,
+        one_ct,
+        params=trade_params,
+        queue_id=queue_id,
+        options_contact=b.binary_options_2,
+    )
+    option = b.binary_options_2.options(option_id)
+
+    assert option[-2] == max_market_oi, "Wrong fee"
+    assert option[2] == (max_market_oi * 1e6) // uint_fee, "Wrong amount"
+    assert (
+        txn.events["UpdatePoolOI"]["isIncreased"]
+        and txn.events["UpdatePoolOI"]["interest"] == max_market_oi
+    ), "Wrong event"
+    # print_oi()
 
 
 def test_exceution(close, contracts, accounts, chain):
@@ -353,7 +646,7 @@ def test_exceution(close, contracts, accounts, chain):
     txn = b.router.executeOptions([close_params], {"from": b.bot})
     chain.revert()
 
-    assert txn.events["Exercise"]["id"] == 0, "Wrong id"
+    assert txn.events["Exercise"]["id"] == optionId, "Wrong id"
     assert txn.events["Transfer"][0]["value"] == option[2], "Wrong payout"
     assert txn.events["Transfer"][0]["to"] == user, "Wrong user"
 
@@ -362,4 +655,4 @@ def test_exceution(close, contracts, accounts, chain):
     b.reregister(user, _one_ct)
 
     txn = b.router.executeOptions([close_params], {"from": b.bot})
-    assert txn.events["Exercise"]["id"] == 0, "Wrong id"
+    assert txn.events["Exercise"]["id"] == optionId, "Wrong id"

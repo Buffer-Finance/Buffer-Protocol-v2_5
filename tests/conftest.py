@@ -96,12 +96,15 @@ def contracts(
         {"from": accounts[0]},
     )
     market_oi_config = MarketOIConfig.deploy(
-        10e6, 2e6, binary_european_options_atm.address, {"from": accounts[0]}
+        int(50000e6),
+        int(1000e6),
+        binary_european_options_atm.address,
+        {"from": accounts[0]},
     )
     option_storage = OptionStorage.deploy({"from": accounts[0]})
     pool_oi_storage = PoolOIStorage.deploy({"from": accounts[0]})
     pool_oi_config = PoolOIConfig.deploy(
-        12e6, pool_oi_storage.address, {"from": accounts[0]}
+        100000e6, pool_oi_storage.address, {"from": accounts[0]}
     )
 
     binary_options_config_atm.setSettlementFeeDisbursalContract(
@@ -160,6 +163,29 @@ def contracts(
         1,
         "ETH",
         "USD",
+    )
+    binary_european_options_atm_2.grantRole(
+        ROUTER_ROLE,
+        router.address,
+        {"from": accounts[0]},
+    )
+    pool_oi_storage.grantRole(
+        UPDATOR_ROLE,
+        binary_european_options_atm_2.address,
+        {"from": accounts[0]},
+    )
+    booster.grantRole(
+        OPTION_ISSUER_ROLE,
+        binary_european_options_atm_2.address,
+        {"from": accounts[0]},
+    )
+    binary_pool_atm.grantRole(
+        OPTION_ISSUER_ROLE,
+        binary_european_options_atm_2.address,
+        {"from": accounts[0]},
+    )
+    binary_european_options_atm_2.approvePoolToTransferTokenX(
+        {"from": accounts[0]},
     )
     return {
         "tokenX": tokenX,

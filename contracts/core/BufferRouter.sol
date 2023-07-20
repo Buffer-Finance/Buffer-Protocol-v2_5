@@ -113,8 +113,9 @@ contract BufferRouter is AccessControl, IBufferRouter {
             );
             ERC20 tokenX = ERC20(optionsContract.tokenX());
             Permit memory permit = params[index].permit;
-
-            if (tokenX.balanceOf(user) < currentParams.totalFee) {
+            uint256 amountToPay = currentParams.totalFee +
+                IOptionsConfig(optionsContract.config()).platformFee();
+            if (tokenX.balanceOf(user) < amountToPay) {
                 emit FailResolve(
                     currentParams.queueId,
                     "Router: Insufficient balance"
@@ -122,8 +123,7 @@ contract BufferRouter is AccessControl, IBufferRouter {
                 continue;
             }
             if (
-                tokenX.allowance(user, address(this)) <
-                currentParams.totalFee &&
+                (tokenX.allowance(user, address(this)) < amountToPay) &&
                 (!permit.shouldApprove)
             ) {
                 emit FailResolve(
@@ -479,6 +479,7 @@ contract BufferRouter is AccessControl, IBufferRouter {
 
         optionParams.strike = params.price;
         optionParams.amount = amount;
+        optionParams.totalFee = revisedFee;
 
         uint256 optionId = optionsContract.createFromRouter(
             optionParams,
@@ -491,7 +492,7 @@ contract BufferRouter is AccessControl, IBufferRouter {
             slippage: params.slippage,
             period: params.period,
             allowPartialFill: params.allowPartialFill,
-            totalFee: params.totalFee,
+            totalFee: revisedFee,
             referralCode: params.referralCode,
             traderNFTId: params.traderNFTId,
             settlementFee: params.settlementFee,

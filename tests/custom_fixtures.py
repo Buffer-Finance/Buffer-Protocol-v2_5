@@ -20,7 +20,6 @@ def init(contracts, accounts, chain):
     # registrar.registerAccount(one_ct.address, {"from": user})
 
     b.tokenX.transfer(user, b.total_fee * 10, {"from": accounts[0]})
-    b.tokenX.approve(b.router, b.total_fee * 10, {"from": user})
     chain.sleep(2)
 
     return b, user, one_ct, b.get_trade_params(user, one_ct)[:-1]
@@ -35,12 +34,11 @@ def early_close(contracts, accounts, chain):
     # registrar.registerAccount(one_ct.address, {"from": user})
 
     b.tokenX.transfer(user, b.total_fee * 10, {"from": accounts[0]})
-    b.tokenX.approve(b.router, b.total_fee * 10, {"from": user})
     chain.sleep(2)
 
     b.binary_options_config.toggleEarlyClose()
 
-    optionId, queueId, trade_params = b.create(user, one_ct)
+    optionId, queueId, trade_params, _ = b.create(user, one_ct)
     option = b.binary_options.options(optionId)
     closing_price = 400e8
     close_params = [
@@ -79,7 +77,6 @@ def init_lo(contracts, accounts, chain):
     one_ct = accounts.add()
 
     b.tokenX.transfer(user, b.total_fee * 10, {"from": accounts[0]})
-    b.tokenX.approve(b.router, b.total_fee * 10, {"from": user})
     chain.sleep(2)
 
     return b, user, one_ct, b.get_trade_params(user, one_ct, True)[:-1]
@@ -94,11 +91,10 @@ def close(contracts, accounts, chain):
     # registrar.registerAccount(one_ct.address, {"from": user})
 
     b.tokenX.transfer(user, b.total_fee * 10, {"from": accounts[0]})
-    b.tokenX.approve(b.router, b.total_fee * 10, {"from": user})
     chain.sleep(2)
     closing_price = 300e8
 
-    optionId, queueId, trade_params = b.create(user, one_ct)
+    optionId, queueId, trade_params, _ = b.create(user, one_ct)
     params = [
         optionId,
         b.binary_options,

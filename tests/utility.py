@@ -37,7 +37,9 @@ class BinaryOptionTesting(object):
         creation_window,
         sf_publisher,
         validator,
+        binary_options_2,
     ):
+        self.binary_options_2 = binary_options_2
         self.settlement_fee_disbursal = settlement_fee_disbursal
         self.referral_contract = referral_contract
         self.trader_nft_contract = trader_nft_contract
@@ -106,6 +108,7 @@ class BinaryOptionTesting(object):
         )
         self.binary_pool.provide(self.liquidity, 0, {"from": self.owner})
         self.router.setContractRegistry(self.binary_options.address, True)
+        self.router.setContractRegistry(self.binary_options_2.address, True)
         self.router.setInPrivateKeeperMode() if self.router.isInPrivateKeeperMode() else None
 
     def time_travel(self, day_of_week, hour, to_minute):
@@ -527,11 +530,20 @@ class BinaryOptionTesting(object):
         )
 
     def get_trade_params(
-        self, user, one_ct, is_limit_order=False, params=None, queue_id=0
+        self,
+        user,
+        one_ct,
+        is_limit_order=False,
+        params=None,
+        queue_id=0,
+        options_contact=None,
     ):
         params = params if params else self.trade_params
         sf_expiry = self.chain.time() + 100
-        sf_signature = self.get_sf_signature(self.binary_options, sf_expiry)
+        options_contact = (
+            self.binary_options if not options_contact else options_contact
+        )
+        sf_signature = self.get_sf_signature(options_contact, sf_expiry)
         user_sign_info = (
             self.get_user_signature(
                 params[:8],
@@ -578,7 +590,7 @@ class BinaryOptionTesting(object):
             )
         )
 
-        lo_expiration = self.chain.time() + ONE_DAY
+        lo_expiration = self.chain.time() + 30
         current_time = self.chain.time()
         trade_params = (
             [queue_id]
@@ -588,7 +600,7 @@ class BinaryOptionTesting(object):
                 [sf_signature, sf_expiry],
                 user_sign_info,
                 [
-                    self.get_signature(self.binary_options, current_time, params[-2]),
+                    self.get_signature(options_contact, current_time, params[-2]),
                     current_time,
                 ],
             ]
@@ -602,7 +614,7 @@ class BinaryOptionTesting(object):
             True,
         ]
         deadline = self.chain.time() + 50
-        allowance = int(10e6)
+        allowance = int(5e6)
         permit = [
             allowance,
             deadline,
@@ -615,19 +627,36 @@ class BinaryOptionTesting(object):
             user_sign_info_for_execution,
         )
 
-    def create(self, user, one_ct, is_limit_order=False, params=None, queue_id=0):
-        expected_option_id = self.binary_options.nextTokenId()
+    def create(
+        self,
+        user,
+        one_ct,
+        is_limit_order=False,
+        params=None,
+        queue_id=0,
+        options_contact=None,
+    ):
+        options_contact = (
+            self.binary_options if not options_contact else options_contact
+        )
+        expected_option_id = options_contact.nextTokenId()
         params = params if params else self.trade_params
         trade_params = self.get_trade_params(
-            user, one_ct, is_limit_order, params, queue_id=queue_id
+            user,
+            one_ct,
+            is_limit_order,
+            params,
+            queue_id=queue_id,
+            options_contact=options_contact,
         )
         txn = self.router.openTrades([*trade_params[:-1]], {"from": self.bot})
+        # print(txn.events)
         optionId = txn.events["OpenTrade"]["optionId"]
         queueId = txn.events["OpenTrade"]["queueId"]
         assert optionId == expected_option_id
 
-        print(self.binary_options.options(optionId))
-        return optionId, queueId, trade_params
+        print(options_contact.options(optionId), optionId)
+        return optionId, queueId, trade_params, txn
 
     def unlock_options(self, options):
         params = []
@@ -656,6 +685,7 @@ def utility(contracts, accounts, chain):
     router = contracts["router"]
     binary_options_config = contracts["binary_options_config_atm"]
     binary_options = contracts["binary_european_options_atm"]
+    binary_options_2 = contracts["binary_european_options_atm_2"]
     publisher = contracts["publisher"]
     sf_publisher = contracts["sf_publisher"]
     settlement_fee_disbursal = contracts["settlement_fee_disbursal"]
@@ -663,7 +693,7 @@ def utility(contracts, accounts, chain):
     trader_nft_contract = contracts["trader_nft_contract"]
     creation_window = contracts["creation_window"]
     validator = contracts["validator"]
-    total_fee = int(1e6) + int(1e5)
+    total_fee = int(1e6)
     liquidity = int(1000000 * 1e6)
     period = 86300
     isAbove = False
@@ -687,6 +717,7 @@ def utility(contracts, accounts, chain):
         creation_window,
         sf_publisher,
         validator,
+        binary_options_2,
     )
     option.init()
 
