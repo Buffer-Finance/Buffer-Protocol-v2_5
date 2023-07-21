@@ -36,7 +36,7 @@ class BinaryOptionTesting(object):
         trader_nft_contract,
         creation_window,
         sf_publisher,
-        validator,
+        # validator,
         binary_options_2,
     ):
         self.binary_options_2 = binary_options_2
@@ -78,7 +78,7 @@ class BinaryOptionTesting(object):
             int(398e8),
             15e2,
         ]
-        self.validator = validator
+        # self.validator = validator
         self.domain_type = [
             {"name": "name", "type": "string"},
             {"name": "version", "type": "string"},
@@ -692,7 +692,7 @@ def utility(contracts, accounts, chain):
     referral_contract = contracts["referral_contract"]
     trader_nft_contract = contracts["trader_nft_contract"]
     creation_window = contracts["creation_window"]
-    validator = contracts["validator"]
+    # validator = contracts["validator"]
     total_fee = int(1e6)
     liquidity = int(1000000 * 1e6)
     period = 86300
@@ -716,7 +716,7 @@ def utility(contracts, accounts, chain):
         trader_nft_contract,
         creation_window,
         sf_publisher,
-        validator,
+        # validator,
         binary_options_2,
     )
     option.init()

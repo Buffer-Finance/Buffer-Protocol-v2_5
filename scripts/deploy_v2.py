@@ -63,6 +63,7 @@ def main():
     referrerTierDiscount = [int(25e3), int(50e3), int(75e3)]
     nftTierStep = [5, 10, 16, 24]
     lockupPeriod = 600
+    account_registrar_address = None
     market_times = [
         (17, 0, 23, 59),
         (0, 0, 23, 59),
@@ -158,15 +159,15 @@ def main():
         decimals = 6
         is_testnet_token = True
         nft_base_contract_address = ""
-        account_registrar = "0xB0BA28f15Ebc9685ec89Cbe8C5E6e960d14f488b"
-        booster = ""
+        account_registrar_address = "0x9CAE1958dCBe6d22Ca37D2a3a544400f0e976240"
+        booster = "0x58E66d360d65Da8d7907768f826D86F411d0f849"
         nft_contract_address = "0xf494F435cb2068559406C77b7271DD7d6aF5B860"
-        token_contract_address = "0x4B5ed6b788e22D7bBe4790A4D6bE8f3A3FFC470E"
+        token_contract_address = "0x50E345c95a3c1E5085AE886FF4AF05Efa2403c90"
         # pool_address = "0xEAf4738C83B48055b54B5E9E48a96A7ee6CbB412"
         # router_contract_address = "0x8e012a532bEbD89CC7b9b8B3Fd2a66605038F22D"
         referral_storage_address = "0x7Fd89bE6309Dcb7E147D172E73F04b52cee6313a"
         # option_reader_address = "0x2C1D6877f6C9B31124D803c5Aa9D0518313A042A"
-        faucet_address = "0x51469Ec9B8AE9B3Fbf985e735C2E3758FbD4e408"
+        faucet_address = "0x8097Fecbb9081191A81DE5295d1D68344EA783fF"
         creation_window_address = "0x72b9de12C4FBBAc17f3394F7EA3aDE315d83C7c1"
         # option_config_address = "0x5f207f0097a794faDD99024370e4D12616A277d1"
         # options_address = "0x68aA6D8e947993Ff2647Ad83ca51dc471478b610"  # ETH-BTC
@@ -223,14 +224,16 @@ def main():
         creation_window_address = creation_window.address
 
     ####### Deploy Registrar #######
-    if not account_registrar:
+    if not account_registrar_address:
         account_registrar = deploy_contract(
             admin,
             network,
             AccountRegistrar,
             [],
         )
-        account_registrar = account_registrar.address
+        account_registrar_address = account_registrar.address
+    else:
+        account_registrar = AccountRegistrar.at(account_registrar_address)
 
     ####### Deploy Booster #######
     if not booster:
@@ -263,9 +266,9 @@ def main():
         )
         booster = booster.address
 
-    deploy_contract(admin, network, ABDKMath64x64, [])
-    option_math = deploy_contract(admin, network, OptionMath, [])
-    validator = deploy_contract(admin, network, Validator, [])
+    # deploy_contract(admin, network, ABDKMath64x64, [])
+    # option_math = deploy_contract(admin, network, OptionMath, [])
+    # validator = deploy_contract(admin, network, Validator, [])
     # ABDKMath64x64.at("0x3C1eDC6e0f9813dB791E02DB1438F5F463873c02")
     # OptionMath.at("0x5C27ed7B5F6cC3374e45cC917e8Ce1AbCE715fCD")
     # Validator.at("0xfAcca5657C99ACa8Cf81179Bbe3789F17Fcf724D")
@@ -284,7 +287,7 @@ def main():
             admin,
             network,
             BufferRouter,
-            [publisher, sf_publisher, admin, account_registrar],
+            [publisher, sf_publisher, admin, account_registrar.address],
         )
         router_contract_address = router_contract.address
 
@@ -506,7 +509,24 @@ def main():
         OPTION_ISSUER_ROLE = pool.OPTION_ISSUER_ROLE()
         ROUTER_ROLE = options.ROUTER_ROLE()
         UPDATOR_ROLE = pool_oi_storage.UPDATOR_ROLE()
+        ADMIN_ROLE = account_registrar.ADMIN_ROLE()
 
+        transact(
+            account_registrar.address,
+            account_registrar.abi,
+            "grantRole",
+            ADMIN_ROLE,
+            router_contract_address,
+            sender=admin,
+        )
+        transact(
+            account_registrar.address,
+            account_registrar.abi,
+            "grantRole",
+            ADMIN_ROLE,
+            open_keeper,
+            sender=admin,
+        )
         transact(
             pool.address,
             pool.abi,
@@ -676,10 +696,8 @@ def main():
         "pool_oi_config": pool_oi_config.address,
         "market_oi_config": market_oi_config.address,
         "option_storage": option_storage.address,
-        "account_registrar": account_registrar,
+        "account_registrar": account_registrar.address,
         "booster": booster,
-        "validator": validator.address,
-        "option_math": option_math.address,
     }
 
     print(all_contractss)

@@ -21,7 +21,7 @@ library Validator {
         address verifyingContract;
     }
 
-    function domainSperator() public view returns (bytes32) {
+    function domainSperator() internal view returns (bytes32) {
         return
             keccak256(
                 abi.encode(
@@ -107,7 +107,7 @@ library Validator {
         IBufferRouter.TradeParams memory params,
         address user,
         address signer
-    ) external view returns (bool) {
+    ) internal view returns (bool) {
         IBufferRouter.SignInfo memory signInfo = params.userSignInfo;
         bytes32 hashData;
         if (params.isLimitOrder) {
@@ -124,7 +124,7 @@ library Validator {
         uint256 price,
         bytes memory signature,
         address signer
-    ) external view returns (bool) {
+    ) internal view returns (bool) {
         bytes32 hashData = keccak256(
             abi.encodePacked(assetPair, timestamp, price)
         );
@@ -138,7 +138,7 @@ library Validator {
         uint256 optionId,
         bytes memory signature,
         address signer
-    ) external view returns (bool) {
+    ) internal view returns (bool) {
         bytes32 hashData = keccak256(
             abi.encode(
                 keccak256(
@@ -158,7 +158,7 @@ library Validator {
         uint256 expiryTimestamp,
         bytes memory signature,
         address signer
-    ) external view returns (bool) {
+    ) internal view returns (bool) {
         bytes32 hashData = keccak256(
             abi.encode(
                 keccak256(
@@ -229,7 +229,7 @@ library Validator {
         IBufferRouter.CloseTradeParams memory params,
         IBufferRouter.QueuedTrade memory queuedTrade,
         address signer
-    ) external view returns (bool) {
+    ) internal view returns (bool) {
         IBufferRouter.SignInfo memory signInfo = params.marketDirectionSignInfo;
         bytes32 hashData;
         if (queuedTrade.isLimitOrder) {
@@ -249,7 +249,7 @@ library Validator {
         address user,
         uint256 nonce,
         bytes memory signature
-    ) external view returns (bool) {
+    ) internal view returns (bool) {
         bytes32 hashData = keccak256(
             abi.encode(
                 keccak256(
@@ -267,7 +267,7 @@ library Validator {
         address user,
         uint256 nonce,
         bytes memory signature
-    ) external view returns (bool) {
+    ) internal view returns (bool) {
         bytes32 hashData = keccak256(
             abi.encode(
                 keccak256("DeregisterAccount(address user,uint256 nonce)"),

@@ -50,9 +50,9 @@ def contracts(
     ibfr_contract = BFR.deploy({"from": accounts[0]})
     sfd = accounts.add()
     tokenX = FakeUSDC.deploy({"from": accounts[0]})
-    ABDKMath64x64.deploy({"from": accounts[0]})
-    OptionMath.deploy({"from": accounts[0]})
-    validator = Validator.deploy({"from": accounts[0]})
+    # ABDKMath64x64.deploy({"from": accounts[0]})
+    # OptionMath.deploy({"from": accounts[0]})
+    # validator = Validator.deploy({"from": accounts[0]})
     creation_window = CreationWindow.deploy(
         1682269200, 1682701200, {"from": accounts[0]}
     )
@@ -201,5 +201,5 @@ def contracts(
         "creation_window": creation_window,
         "binary_european_options_atm_2": binary_european_options_atm_2,
         "sf_publisher": sf_publisher,
-        "validator": validator,
+        # "validator": validator,
     }

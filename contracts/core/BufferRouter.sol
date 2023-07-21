@@ -510,22 +510,4 @@ contract BufferRouter is AccessControl, IBufferRouter {
 
         emit OpenTrade(user, params.queueId, optionId, params.targetContract);
     }
-
-    // TODO: remove later
-    function verifySF(
-        string memory assetPair,
-        uint256 settlementFee,
-        uint256 expiryTimestamp,
-        bytes memory signature,
-        address signer
-    ) public view returns (bool) {
-        return
-            Validator.verifySettlementFee(
-                assetPair,
-                settlementFee,
-                expiryTimestamp,
-                signature,
-                signer
-            );
-    }
 }

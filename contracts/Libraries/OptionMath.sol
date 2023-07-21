@@ -28,7 +28,7 @@ library ABDKMath64x64 {
      * @param x signed 256-bit integer number
      * @return signed 64.64-bit fixed point number
      */
-    function fromInt(int256 x) public pure returns (int128) {
+    function fromInt(int256 x) internal pure returns (int128) {
         unchecked {
             require(x >= -0x8000000000000000 && x <= 0x7FFFFFFFFFFFFFFF);
             return int128(x << 64);
@@ -42,7 +42,7 @@ library ABDKMath64x64 {
      * @param x signed 64.64-bit fixed point number
      * @return signed 64-bit integer number
      */
-    function toInt(int128 x) public pure returns (int64) {
+    function toInt(int128 x) internal pure returns (int64) {
         unchecked {
             return int64(x >> 64);
         }
@@ -69,7 +69,7 @@ library ABDKMath64x64 {
      * @param x signed 64.64-bit fixed point number
      * @return unsigned 64-bit integer number
      */
-    function toUInt(int128 x) public pure returns (uint64) {
+    function toUInt(int128 x) internal pure returns (uint64) {
         unchecked {
             require(x >= 0);
             return uint64(uint128(x >> 64));
@@ -141,7 +141,7 @@ library ABDKMath64x64 {
      * @param y signed 64.64-bit fixed point number
      * @return signed 64.64-bit fixed point number
      */
-    function mul(int128 x, int128 y) public pure returns (int128) {
+    function mul(int128 x, int128 y) internal pure returns (int128) {
         unchecked {
             int256 result = (int256(x) * y) >> 64;
             require(result >= MIN_64x64 && result <= MAX_64x64);
@@ -231,7 +231,7 @@ library ABDKMath64x64 {
      * @param y signed 64.64-bit fixed point number
      * @return signed 64.64-bit fixed point number
      */
-    function div(int128 x, int128 y) public pure returns (int128) {
+    function div(int128 x, int128 y) internal pure returns (int128) {
         unchecked {
             require(y != 0);
             int256 result = (int256(x) << 64) / y;
@@ -280,7 +280,7 @@ library ABDKMath64x64 {
      * @param y unsigned 256-bit integer number
      * @return signed 64.64-bit fixed point number
      */
-    function divu(uint256 x, uint256 y) public pure returns (int128) {
+    function divu(uint256 x, uint256 y) internal pure returns (int128) {
         unchecked {
             require(y != 0);
             uint128 result = divuu(x, y);
@@ -471,7 +471,7 @@ library ABDKMath64x64 {
      * @param x signed 64.64-bit fixed point number
      * @return signed 64.64-bit fixed point number
      */
-    function sqrt(int128 x) public pure returns (int128) {
+    function sqrt(int128 x) internal pure returns (int128) {
         unchecked {
             require(x >= 0);
             return int128(sqrtu(uint256(int256(x)) << 64));
@@ -903,7 +903,7 @@ library OptionMath {
         uint256 period,
         bool isYes,
         bool isAbove
-    ) public pure returns (uint256) {
+    ) internal pure returns (uint256) {
         int128 D8 = ABDKMath64x64.fromUInt(10 ** 8);
         int128 D4 = ABDKMath64x64.fromUInt(10 ** 4);
         int128 impliedVol64x64 = ABDKMath64x64.fromUInt(impliedVol).div(D4);
@@ -942,7 +942,7 @@ library OptionMath {
         int128 timeToMaturity64x64,
         bool isYes,
         bool isAbove
-    ) public pure returns (int128) {
+    ) internal pure returns (int128) {
         int128 cumulativeVariance64x64 = timeToMaturity64x64.mul(
             varianceAnnualized64x64
         );
