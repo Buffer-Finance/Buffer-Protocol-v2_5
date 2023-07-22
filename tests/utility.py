@@ -8,6 +8,8 @@ from eth_account.messages import encode_structured_data
 
 ONE_DAY = 86400
 
+ADDRESS_0 = "0x0000000000000000000000000000000000000000"
+
 
 def to_32byte_hex(val):
     web3 = brownie.network.web3
@@ -34,8 +36,10 @@ class BinaryOptionTesting(object):
         trader_nft_contract,
         creation_window,
         sf_publisher,
-        validator,
+        # validator,
+        binary_options_2,
     ):
+        self.binary_options_2 = binary_options_2
         self.settlement_fee_disbursal = settlement_fee_disbursal
         self.referral_contract = referral_contract
         self.trader_nft_contract = trader_nft_contract
@@ -45,6 +49,7 @@ class BinaryOptionTesting(object):
         self.binary_options = binary_options
         self.binary_pool = binary_pool
         self.total_fee = total_fee
+        self.accounts = accounts
         self.owner = accounts[0]
         self.user_1 = accounts[1]
         self.user_2 = accounts[2]
@@ -61,7 +66,6 @@ class BinaryOptionTesting(object):
         self.sf = 1500
         self.creation_window = creation_window
         self.registrar = AccountRegistrar.at(self.router.accountRegistrar())
-
         self.trade_params = [
             self.total_fee,
             self.period,
@@ -74,7 +78,7 @@ class BinaryOptionTesting(object):
             int(398e8),
             15e2,
         ]
-        self.validator = validator
+        # self.validator = validator
         self.domain_type = [
             {"name": "name", "type": "string"},
             {"name": "version", "type": "string"},
@@ -93,12 +97,18 @@ class BinaryOptionTesting(object):
         signed_msg = brownie.web3.eth.account.sign_message(encoded_msg, key)
         return signed_msg.signature
 
+    def enc_v2(self, msg_params, key):
+        encoded_msg = encode_structured_data(msg_params)
+        signed_msg = brownie.web3.eth.account.sign_message(encoded_msg, key)
+        return signed_msg
+
     def init(self):
         self.tokenX.approve(
             self.binary_pool.address, self.liquidity, {"from": self.owner}
         )
         self.binary_pool.provide(self.liquidity, 0, {"from": self.owner})
         self.router.setContractRegistry(self.binary_options.address, True)
+        self.router.setContractRegistry(self.binary_options_2.address, True)
         self.router.setInPrivateKeeperMode() if self.router.isInPrivateKeeperMode() else None
 
     def time_travel(self, day_of_week, hour, to_minute):
@@ -126,7 +136,7 @@ class BinaryOptionTesting(object):
 
     def check_trading_window(self, day, hour, min, period, expected):
         self.time_travel(day, hour, min)
-        print(self.chain.time())
+        # print(self.chain.time())
         assert (
             self.creation_window.isInCreationWindow(period) == expected
         ), f"Should {'' if expected else 'not'} be in creation window on {day} {hour}:{min} for period {period}"
@@ -195,7 +205,6 @@ class BinaryOptionTesting(object):
             [BufferBinaryOptions.at(token).assetPair(), timestamp, int(price)],
         )
         signed_message = Account.sign_message(encode_defunct(msg_hash), key)
-
         return to_32byte_hex(signed_message.signature)
 
     def get_sf_signature(self, token, timestamp, sf_publisher=None):
@@ -222,7 +231,9 @@ class BinaryOptionTesting(object):
                 "settlementFee": self.sf,
             },
         }
-        return self.enc(msgParams, key)
+        s = self.enc(msgParams, key)
+
+        return s
 
     def get_close_signature(self, token, timestamp, optionId, key):
         msgParams = {
@@ -279,7 +290,8 @@ class BinaryOptionTesting(object):
                 "settlementFee": self.sf,
             },
         }
-        return (self.enc(msgParams, key), signature_time)
+        s = self.enc(msgParams, key)
+        return (s, signature_time)
 
     def get_lo_user_signature(self, params, user, key):
         web3 = brownie.network.web3
@@ -406,17 +418,132 @@ class BinaryOptionTesting(object):
 
         return (to_32byte_hex(signed_message.signature), signature_time)
 
+    def get_register_signature(self, one_ct, user):
+        web3 = brownie.network.web3
+        key = user.private_key
+
+        domain = {
+            "name": "Validator",
+            "version": "1",
+            "chainId": 1,
+            "verifyingContract": self.registrar.address,
+        }
+        msgParams = {
+            "types": {
+                "EIP712Domain": self.domain_type,
+                "RegisterAccount": [
+                    {"name": "oneCT", "type": "address"},
+                    {"name": "user", "type": "address"},
+                    {"name": "nonce", "type": "uint256"},
+                ],
+            },
+            "primaryType": "RegisterAccount",
+            "domain": domain,
+            "message": {
+                "oneCT": one_ct.address,
+                "user": user.address,
+                "nonce": self.registrar.accountMapping(user.address)[1],
+            },
+        }
+        s = self.enc(msgParams, key)
+        return s
+
+    def get_deregister_signature(self, user):
+        web3 = brownie.network.web3
+        key = user.private_key
+
+        domain = {
+            "name": "Validator",
+            "version": "1",
+            "chainId": 1,
+            "verifyingContract": self.registrar.address,
+        }
+        msgParams = {
+            "types": {
+                "EIP712Domain": self.domain_type,
+                "DeregisterAccount": [
+                    {"name": "user", "type": "address"},
+                    {"name": "nonce", "type": "uint256"},
+                ],
+            },
+            "primaryType": "DeregisterAccount",
+            "domain": domain,
+            "message": {
+                "user": user.address,
+                "nonce": self.registrar.accountMapping(user.address)[1],
+            },
+        }
+        s = self.enc(msgParams, key)
+        return s
+
+    def get_permit(self, allowance, deadline, user):
+        web3 = brownie.network.web3
+        key = user.private_key
+        domain = {
+            "name": "Token",
+            "version": "1",
+            "chainId": 1,
+            "verifyingContract": self.tokenX.address,
+        }
+
+        msgParams = {
+            "types": {
+                "EIP712Domain": self.domain_type,
+                "Permit": [
+                    {"name": "owner", "type": "address"},
+                    {"name": "spender", "type": "address"},
+                    {"name": "value", "type": "uint256"},
+                    {"name": "nonce", "type": "uint256"},
+                    {"name": "deadline", "type": "uint256"},
+                ],
+            },
+            "primaryType": "Permit",
+            "domain": domain,
+            "message": {
+                "owner": user.address,
+                "spender": self.router.address,
+                "value": allowance,
+                "nonce": self.tokenX.nonces(user.address),
+                "deadline": deadline,
+            },
+        }
+        sig = self.enc_v2(msgParams, key)
+
+        return sig.v, sig.r, sig.s
+
     def reregister(self, user, one_ct):
-        self.registrar.deregisterAccount({"from": user})
-        txn = self.registrar.registerAccount(one_ct.address, {"from": user})
-        print(txn.events)
+        ADMIN_ROLE = self.registrar.ADMIN_ROLE()
+        self.registrar.grantRole(
+            ADMIN_ROLE,
+            self.accounts[0],
+            {"from": self.accounts[0]},
+        )
+
+        self.registrar.deregisterAccount(
+            user.address, self.get_deregister_signature(user), {"from": self.owner}
+        )
+        txn = self.registrar.registerAccount(
+            one_ct.address,
+            user.address,
+            self.get_register_signature(one_ct, user),
+            {"from": self.owner},
+        )
 
     def get_trade_params(
-        self, user, one_ct, is_limit_order=False, params=None, queue_id=0
+        self,
+        user,
+        one_ct,
+        is_limit_order=False,
+        params=None,
+        queue_id=0,
+        options_contact=None,
     ):
         params = params if params else self.trade_params
-        sf_expiry = self.chain.time() + 3
-        sf_signature = self.get_sf_signature(self.binary_options, sf_expiry)
+        sf_expiry = self.chain.time() + 100
+        options_contact = (
+            self.binary_options if not options_contact else options_contact
+        )
+        sf_signature = self.get_sf_signature(options_contact, sf_expiry)
         user_sign_info = (
             self.get_user_signature(
                 params[:8],
@@ -445,37 +572,91 @@ class BinaryOptionTesting(object):
                 one_ct.private_key,
             )
         )
-        lo_expiration = self.chain.time() + ONE_DAY
+        self.wrong_full_signature = (
+            self.get_user_signature_with_direction(
+                params[:8],
+                not self.is_above,
+                user.address,
+                user_sign_info[1],
+                one_ct.private_key,
+            )
+            if not is_limit_order
+            else self.get_lo_user_signature_with_direction(
+                params[:8],
+                not self.is_above,
+                user.address,
+                user_sign_info[1],
+                one_ct.private_key,
+            )
+        )
+
+        lo_expiration = self.chain.time() + 30
         current_time = self.chain.time()
         trade_params = (
-            [queue_id, user]
+            [queue_id]
             + params
             + [is_limit_order, lo_expiration if is_limit_order else 0]
             + [
                 [sf_signature, sf_expiry],
                 user_sign_info,
                 [
-                    self.get_signature(self.binary_options, current_time, params[-2]),
+                    self.get_signature(options_contact, current_time, params[-2]),
                     current_time,
                 ],
-                user_sign_info_for_execution,
             ]
         )
-        return trade_params
+        register_params = [
+            one_ct.address,
+            self.get_register_signature(
+                one_ct,
+                user,
+            ),
+            True,
+        ]
+        deadline = self.chain.time() + 50
+        allowance = int(5e6)
+        permit = [
+            allowance,
+            deadline,
+            *self.get_permit(allowance, deadline, user),
+            True,
+        ]
 
-    def create(self, user, one_ct, is_limit_order=False, params=None, queue_id=0):
-        expected_option_id = self.binary_options.nextTokenId()
+        return (
+            [trade_params, register_params, permit, user.address],
+            user_sign_info_for_execution,
+        )
+
+    def create(
+        self,
+        user,
+        one_ct,
+        is_limit_order=False,
+        params=None,
+        queue_id=0,
+        options_contact=None,
+    ):
+        options_contact = (
+            self.binary_options if not options_contact else options_contact
+        )
+        expected_option_id = options_contact.nextTokenId()
         params = params if params else self.trade_params
         trade_params = self.get_trade_params(
-            user, one_ct, is_limit_order, params, queue_id=queue_id
+            user,
+            one_ct,
+            is_limit_order,
+            params,
+            queue_id=queue_id,
+            options_contact=options_contact,
         )
-        txn = self.router.openTrades([trade_params[:-1]], {"from": self.bot})
+        txn = self.router.openTrades([*trade_params[:-1]], {"from": self.bot})
+        # print(txn.events)
         optionId = txn.events["OpenTrade"]["optionId"]
         queueId = txn.events["OpenTrade"]["queueId"]
         assert optionId == expected_option_id
 
-        print(self.binary_options.options(optionId))
-        return optionId, queueId, trade_params
+        print(options_contact.options(optionId), optionId)
+        return optionId, queueId, trade_params, txn
 
     def unlock_options(self, options):
         params = []
@@ -504,14 +685,15 @@ def utility(contracts, accounts, chain):
     router = contracts["router"]
     binary_options_config = contracts["binary_options_config_atm"]
     binary_options = contracts["binary_european_options_atm"]
+    binary_options_2 = contracts["binary_european_options_atm_2"]
     publisher = contracts["publisher"]
     sf_publisher = contracts["sf_publisher"]
     settlement_fee_disbursal = contracts["settlement_fee_disbursal"]
     referral_contract = contracts["referral_contract"]
     trader_nft_contract = contracts["trader_nft_contract"]
     creation_window = contracts["creation_window"]
-    validator = contracts["validator"]
-    total_fee = int(1e6) + int(1e5)
+    # validator = contracts["validator"]
+    total_fee = int(1e6)
     liquidity = int(1000000 * 1e6)
     period = 86300
     isAbove = False
@@ -534,7 +716,8 @@ def utility(contracts, accounts, chain):
         trader_nft_contract,
         creation_window,
         sf_publisher,
-        validator,
+        # validator,
+        binary_options_2,
     )
     option.init()
 

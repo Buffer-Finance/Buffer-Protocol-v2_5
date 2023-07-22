@@ -21,7 +21,7 @@ library Validator {
         address verifyingContract;
     }
 
-    function domainSperator() public view returns (bytes32) {
+    function domainSperator() internal view returns (bytes32) {
         return
             keccak256(
                 abi.encode(
@@ -52,19 +52,18 @@ library Validator {
             );
     }
 
-    function verifyUserTradeParams(
+    function getUserTradeHash(
         IBufferRouter.TradeParams memory params,
-        address signer
-    ) external view returns (bool) {
-        IBufferRouter.SignInfo memory signInfo = params.userSignInfo;
-        bytes32 hashData;
-        if (params.isLimitOrder) {
-            hashData = keccak256(
+        address user,
+        IBufferRouter.SignInfo memory signInfo
+    ) internal view returns (bytes32) {
+        return
+            keccak256(
                 abi.encode(
                     keccak256(
                         "UserTradeSignature(address user,uint256 totalFee,uint256 period,address targetContract,uint256 strike,uint256 slippage,bool allowPartialFill,string referralCode,uint256 traderNFTId,uint256 timestamp)"
                     ),
-                    params.user,
+                    user,
                     params.totalFee,
                     params.period,
                     params.targetContract,
@@ -76,13 +75,20 @@ library Validator {
                     signInfo.timestamp
                 )
             );
-        } else {
-            hashData = keccak256(
+    }
+
+    function getUserTradeHashWithSF(
+        IBufferRouter.TradeParams memory params,
+        address user,
+        IBufferRouter.SignInfo memory signInfo
+    ) internal view returns (bytes32) {
+        return
+            keccak256(
                 abi.encode(
                     keccak256(
                         "UserTradeSignatureWithSettlementFee(address user,uint256 totalFee,uint256 period,address targetContract,uint256 strike,uint256 slippage,bool allowPartialFill,string referralCode,uint256 traderNFTId,uint256 timestamp,uint256 settlementFee)"
                     ),
-                    params.user,
+                    user,
                     params.totalFee,
                     params.period,
                     params.targetContract,
@@ -95,6 +101,19 @@ library Validator {
                     params.settlementFee
                 )
             );
+    }
+
+    function verifyUserTradeParams(
+        IBufferRouter.TradeParams memory params,
+        address user,
+        address signer
+    ) internal view returns (bool) {
+        IBufferRouter.SignInfo memory signInfo = params.userSignInfo;
+        bytes32 hashData;
+        if (params.isLimitOrder) {
+            hashData = getUserTradeHash(params, user, signInfo);
+        } else {
+            hashData = getUserTradeHashWithSF(params, user, signInfo);
         }
         return _validate(hashData, signInfo.signature, signer);
     }
@@ -105,7 +124,7 @@ library Validator {
         uint256 price,
         bytes memory signature,
         address signer
-    ) external view returns (bool) {
+    ) internal view returns (bool) {
         bytes32 hashData = keccak256(
             abi.encodePacked(assetPair, timestamp, price)
         );
@@ -119,7 +138,7 @@ library Validator {
         uint256 optionId,
         bytes memory signature,
         address signer
-    ) external view returns (bool) {
+    ) internal view returns (bool) {
         bytes32 hashData = keccak256(
             abi.encode(
                 keccak256(
@@ -139,7 +158,7 @@ library Validator {
         uint256 expiryTimestamp,
         bytes memory signature,
         address signer
-    ) external view returns (bool) {
+    ) internal view returns (bool) {
         bytes32 hashData = keccak256(
             abi.encode(
                 keccak256(
@@ -210,7 +229,7 @@ library Validator {
         IBufferRouter.CloseTradeParams memory params,
         IBufferRouter.QueuedTrade memory queuedTrade,
         address signer
-    ) external view returns (bool) {
+    ) internal view returns (bool) {
         IBufferRouter.SignInfo memory signInfo = params.marketDirectionSignInfo;
         bytes32 hashData;
         if (queuedTrade.isLimitOrder) {
@@ -223,5 +242,39 @@ library Validator {
             );
         }
         return _validate(hashData, signInfo.signature, signer);
+    }
+
+    function verifyUserRegistration(
+        address oneCT,
+        address user,
+        uint256 nonce,
+        bytes memory signature
+    ) internal view returns (bool) {
+        bytes32 hashData = keccak256(
+            abi.encode(
+                keccak256(
+                    "RegisterAccount(address oneCT,address user,uint256 nonce)"
+                ),
+                oneCT,
+                user,
+                nonce
+            )
+        );
+        return _validate(hashData, signature, user);
+    }
+
+    function verifyUserDeregistration(
+        address user,
+        uint256 nonce,
+        bytes memory signature
+    ) internal view returns (bool) {
+        bytes32 hashData = keccak256(
+            abi.encode(
+                keccak256("DeregisterAccount(address user,uint256 nonce)"),
+                user,
+                nonce
+            )
+        );
+        return _validate(hashData, signature, user);
     }
 }

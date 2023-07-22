@@ -295,6 +295,7 @@ contract BufferBinaryOptions is
         );
 
         uint256 maxTradeSize = getMaxTradeSize();
+        require(maxTradeSize > 0, "O36");
         revisedFee = min(optionParams.totalFee, maxTradeSize);
 
         if (revisedFee < optionParams.totalFee) {

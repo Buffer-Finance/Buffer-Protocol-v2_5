@@ -5,6 +5,7 @@ pragma solidity 0.8.4;
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
 import "../interfaces/Interfaces.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "../Libraries/Validator.sol";
@@ -72,22 +73,93 @@ contract BufferRouter is AccessControl, IBufferRouter {
      *  KEEPER ONLY FUNCTIONS
      ***********************************************/
 
-    function openTrades(TradeParams[] calldata params) external {
+    function approveViaSignature(
+        address tokenX,
+        address user,
+        uint256 queueId,
+        Permit memory permit
+    ) public returns (bool) {
+        IERC20Permit token = IERC20Permit(tokenX);
+        uint256 nonceBefore = token.nonces(user);
+        try
+            token.permit(
+                user,
+                address(this),
+                permit.value,
+                permit.deadline,
+                permit.v,
+                permit.r,
+                permit.s
+            )
+        {} catch Error(string memory reason) {
+            emit FailResolve(queueId, reason);
+            return false;
+        }
+        uint256 nonceAfter = token.nonces(user);
+        if (nonceAfter != nonceBefore + 1) {
+            emit FailResolve(queueId, "Router: Permit did not succeed");
+            return false;
+        }
+        return true;
+    }
+
+    function openTrades(OpenTxn[] calldata params) external {
         _validateKeeper();
         for (uint32 index = 0; index < params.length; index++) {
-            TradeParams memory currentParams = params[index];
-            (address signer, uint256 nonce) = getAccountMapping(
-                currentParams.user
+            TradeParams memory currentParams = params[index].tradeParams;
+            address user = params[index].user;
+            IBufferBinaryOptions optionsContract = IBufferBinaryOptions(
+                currentParams.targetContract
             );
+            ERC20 tokenX = ERC20(optionsContract.tokenX());
+            Permit memory permit = params[index].permit;
+            uint256 amountToPay = currentParams.totalFee +
+                IOptionsConfig(optionsContract.config()).platformFee();
+            if (tokenX.balanceOf(user) < amountToPay) {
+                emit FailResolve(
+                    currentParams.queueId,
+                    "Router: Insufficient balance"
+                );
+                continue;
+            }
+            if (
+                (tokenX.allowance(user, address(this)) < amountToPay) &&
+                (!permit.shouldApprove)
+            ) {
+                emit FailResolve(
+                    currentParams.queueId,
+                    "Router: Incorrect allowance"
+                );
+                continue;
+            } else if (permit.shouldApprove) {
+                bool success = approveViaSignature(
+                    address(optionsContract.tokenX()),
+                    user,
+                    currentParams.queueId,
+                    permit
+                );
+                if (!success) continue;
+            }
+            if (params[index].register.shouldRegister) {
+                accountRegistrar.registerAccount(
+                    params[index].register.oneCT,
+                    user,
+                    params[index].register.signature
+                );
+            }
+
+            (address signer, uint256 nonce) = getAccountMapping(user);
             (bool isValid, string memory errorResaon) = verifyTrade(
                 currentParams,
-                signer
+                user,
+                signer,
+                optionsContract
             );
             if (!isValid) {
                 emit FailResolve(currentParams.queueId, errorResaon);
                 continue;
             }
-            _openTrade(currentParams, signer, nonce);
+            _openTrade(currentParams, user, signer, nonce, optionsContract);
         }
     }
 
@@ -289,11 +361,10 @@ contract BufferRouter is AccessControl, IBufferRouter {
 
     function verifyTrade(
         TradeParams memory params,
-        address tradeSigner
+        address user,
+        address tradeSigner,
+        IBufferBinaryOptions optionsContract
     ) public view returns (bool, string memory) {
-        IBufferBinaryOptions optionsContract = IBufferBinaryOptions(
-            params.targetContract
-        );
         SignInfo memory settlementFeeSignInfo = params.settlementFeeSignInfo;
         SignInfo memory publisherSignInfo = params.publisherSignInfo;
         SignInfo memory userSignInfo = params.userSignInfo;
@@ -307,7 +378,7 @@ contract BufferRouter is AccessControl, IBufferRouter {
         if (prevSignature[userSignInfo.signature]) {
             return (false, "Router: Signature already used");
         }
-        if (!Validator.verifyUserTradeParams(params, tradeSigner)) {
+        if (!Validator.verifyUserTradeParams(params, user, tradeSigner)) {
             return (false, "Router: User signature didn't match");
         }
         if (
@@ -367,12 +438,11 @@ contract BufferRouter is AccessControl, IBufferRouter {
 
     function _openTrade(
         TradeParams memory params,
+        address user,
         address tradeSigner,
-        uint256 nonce
+        uint256 nonce,
+        IBufferBinaryOptions optionsContract
     ) internal {
-        IBufferBinaryOptions optionsContract = IBufferBinaryOptions(
-            params.targetContract
-        );
         IOptionsConfig config = IOptionsConfig(optionsContract.config());
         uint256 platformFee = config.platformFee();
 
@@ -386,7 +456,7 @@ contract BufferRouter is AccessControl, IBufferRouter {
                 params.period,
                 params.allowPartialFill,
                 params.totalFee,
-                params.user,
+                user,
                 params.referralCode,
                 params.settlementFee
             );
@@ -396,7 +466,7 @@ contract BufferRouter is AccessControl, IBufferRouter {
         returns (uint256 _amount, uint256 _revisedFee) {
             (amount, revisedFee) = (_amount, _revisedFee);
         } catch Error(string memory reason) {
-            emit CancelTrade(params.user, params.queueId, reason);
+            emit CancelTrade(user, params.queueId, reason);
             return;
         }
 
@@ -404,24 +474,25 @@ contract BufferRouter is AccessControl, IBufferRouter {
         // User has to approve first inorder to execute this function
         ERC20 tokenX = ERC20(optionsContract.tokenX());
 
-        tokenX.safeTransferFrom(params.user, admin, platformFee);
-        tokenX.safeTransferFrom(params.user, params.targetContract, revisedFee);
+        tokenX.safeTransferFrom(user, admin, platformFee);
+        tokenX.safeTransferFrom(user, params.targetContract, revisedFee);
 
         optionParams.strike = params.price;
         optionParams.amount = amount;
+        optionParams.totalFee = revisedFee;
 
         uint256 optionId = optionsContract.createFromRouter(
             optionParams,
             params.publisherSignInfo.timestamp
         );
         queuedTrades[params.queueId] = QueuedTrade({
-            user: params.user,
+            user: user,
             targetContract: params.targetContract,
             strike: params.strike,
             slippage: params.slippage,
             period: params.period,
             allowPartialFill: params.allowPartialFill,
-            totalFee: params.totalFee,
+            totalFee: revisedFee,
             referralCode: params.referralCode,
             traderNFTId: params.traderNFTId,
             settlementFee: params.settlementFee,
@@ -437,29 +508,6 @@ contract BufferRouter is AccessControl, IBufferRouter {
         });
         prevSignature[params.userSignInfo.signature] = true;
 
-        emit OpenTrade(
-            params.user,
-            params.queueId,
-            optionId,
-            params.targetContract
-        );
-    }
-
-    // TODO: remove later
-    function verifySF(
-        string memory assetPair,
-        uint256 settlementFee,
-        uint256 expiryTimestamp,
-        bytes memory signature,
-        address signer
-    ) public view returns (bool) {
-        return
-            Validator.verifySettlementFee(
-                assetPair,
-                settlementFee,
-                expiryTimestamp,
-                signature,
-                signer
-            );
+        emit OpenTrade(user, params.queueId, optionId, params.targetContract);
     }
 }

@@ -25,7 +25,7 @@ def isolate(fn_isolation):
 @pytest.fixture(scope="module")
 def contracts(
     accounts,
-    USDC,
+    FakeUSDC,
     BFR,
     BufferBinaryPool,
     BufferBinaryOptions,
@@ -49,10 +49,10 @@ def contracts(
     admin = accounts.add()
     ibfr_contract = BFR.deploy({"from": accounts[0]})
     sfd = accounts.add()
-    tokenX = USDC.deploy({"from": accounts[0]})
-    ABDKMath64x64.deploy({"from": accounts[0]})
-    OptionMath.deploy({"from": accounts[0]})
-    validator = Validator.deploy({"from": accounts[0]})
+    tokenX = FakeUSDC.deploy({"from": accounts[0]})
+    # ABDKMath64x64.deploy({"from": accounts[0]})
+    # OptionMath.deploy({"from": accounts[0]})
+    # validator = Validator.deploy({"from": accounts[0]})
     creation_window = CreationWindow.deploy(
         1682269200, 1682701200, {"from": accounts[0]}
     )
@@ -64,6 +64,12 @@ def contracts(
 
     router = BufferRouter.deploy(
         publisher, sf_publisher, admin, registrar.address, {"from": accounts[0]}
+    )
+    ADMIN_ROLE = registrar.ADMIN_ROLE()
+    registrar.grantRole(
+        ADMIN_ROLE,
+        router.address,
+        {"from": accounts[0]},
     )
     trader_nft = FakeTraderNFT.deploy(accounts[9], {"from": accounts[0]})
     booster = Booster.deploy(trader_nft.address, {"from": accounts[0]})
@@ -78,26 +84,27 @@ def contracts(
     )
     referral_contract = ReferralStorage.deploy({"from": accounts[0]})
 
-    binary_european_options_atm = BufferBinaryOptions.deploy(
-        {"from": accounts[0]}
-    )
+    binary_european_options_atm = BufferBinaryOptions.deploy({"from": accounts[0]})
     binary_european_options_atm.initialize(
-    tokenX.address,
+        tokenX.address,
         binary_pool_atm.address,
         binary_options_config_atm.address,
         referral_contract.address,
         1,
         "ETH",
         "BTC",
-        {"from": accounts[0]}
-        )
+        {"from": accounts[0]},
+    )
     market_oi_config = MarketOIConfig.deploy(
-        10e6, 2e6, binary_european_options_atm.address, {"from": accounts[0]}
+        int(50000e6),
+        int(1000e6),
+        binary_european_options_atm.address,
+        {"from": accounts[0]},
     )
     option_storage = OptionStorage.deploy({"from": accounts[0]})
     pool_oi_storage = PoolOIStorage.deploy({"from": accounts[0]})
     pool_oi_config = PoolOIConfig.deploy(
-        12e6, pool_oi_storage.address, {"from": accounts[0]}
+        100000e6, pool_oi_storage.address, {"from": accounts[0]}
     )
 
     binary_options_config_atm.setSettlementFeeDisbursalContract(
@@ -138,19 +145,16 @@ def contracts(
     # bfr_binary_options_config_atm.settraderNFTContract(trader_nft.address)
     referral_contract.setConfigure([2, 4, 6], [25e3, 50e3, 75e3], {"from": accounts[0]})
 
-
-
     binary_options_config_atm.setOptionStorageContract(option_storage.address)
     binary_options_config_atm.setPoolOIStorageContract(pool_oi_storage.address)
     binary_options_config_atm.setMarketOIConfigContract(market_oi_config.address)
     binary_options_config_atm.setPoolOIConfigContract(pool_oi_config.address)
-    binary_options_config_atm.setIV(1100)
+    binary_options_config_atm.setIV(11000)
 
     binary_european_options_atm_2 = BufferBinaryOptions.deploy(
-        
         {"from": accounts[0]},
     )
-  
+
     binary_european_options_atm_2.initialize(
         tokenX.address,
         binary_pool_atm.address,
@@ -158,7 +162,31 @@ def contracts(
         referral_contract.address,
         1,
         "ETH",
-        "USD")
+        "USD",
+    )
+    binary_european_options_atm_2.grantRole(
+        ROUTER_ROLE,
+        router.address,
+        {"from": accounts[0]},
+    )
+    pool_oi_storage.grantRole(
+        UPDATOR_ROLE,
+        binary_european_options_atm_2.address,
+        {"from": accounts[0]},
+    )
+    booster.grantRole(
+        OPTION_ISSUER_ROLE,
+        binary_european_options_atm_2.address,
+        {"from": accounts[0]},
+    )
+    binary_pool_atm.grantRole(
+        OPTION_ISSUER_ROLE,
+        binary_european_options_atm_2.address,
+        {"from": accounts[0]},
+    )
+    binary_european_options_atm_2.approvePoolToTransferTokenX(
+        {"from": accounts[0]},
+    )
     return {
         "tokenX": tokenX,
         "referral_contract": referral_contract,
@@ -173,5 +201,5 @@ def contracts(
         "creation_window": creation_window,
         "binary_european_options_atm_2": binary_european_options_atm_2,
         "sf_publisher": sf_publisher,
-        "validator": validator,
+        # "validator": validator,
     }
