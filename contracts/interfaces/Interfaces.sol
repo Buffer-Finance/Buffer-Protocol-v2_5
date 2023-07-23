@@ -38,6 +38,7 @@ interface IAccountRegistrar {
         address indexed oneCT,
         uint256 nonce
     );
+    event DeregisterAccount(address indexed account, uint256 nonce);
 
     function accountMapping(
         address
@@ -153,7 +154,6 @@ interface IBufferRouter {
     event FailUnlock(uint256 optionId, address targetContract, string reason);
     event FailResolve(uint256 queueId, string reason);
     event ContractRegistryUpdated(address targetContract, bool register);
-    event DeregisterAccount(address indexed account);
 }
 
 interface IBufferBinaryOptions {

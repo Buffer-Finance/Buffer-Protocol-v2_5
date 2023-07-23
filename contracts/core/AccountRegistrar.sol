@@ -51,5 +51,6 @@ contract AccountRegistrar is IAccountRegistrar, AccessControl {
             nonce: nonce + 1,
             oneCT: address(0)
         });
+        emit DeregisterAccount(user, nonce + 1);
     }
 }
