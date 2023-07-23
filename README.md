@@ -80,3 +80,9 @@ brownie test -n auto --coverage
     ReferralStorage.setCodeOwner - 100.0%
 
 ```
+
+## Create Metrics
+
+```bash
+solidity-code-metrics ./contracts/core/\* --html > metrics.html
+```

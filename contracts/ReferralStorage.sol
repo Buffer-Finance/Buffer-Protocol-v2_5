@@ -3,7 +3,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "../interfaces/Interfaces.sol";
+import "./interfaces/Interfaces.sol";
 
 /**
  * @author Heisenberg
@@ -18,7 +18,6 @@ contract ReferralStorage is IReferralStorage, Ownable {
     mapping(string => address) public override codeOwner;
     mapping(address => string) public userCode;
     mapping(address => string) public override traderReferralCodes;
-    mapping(address => ReferralData) public UserReferralData;
 
     /**
      * @notice Sets the config for step reduction and discount on the basis of tier

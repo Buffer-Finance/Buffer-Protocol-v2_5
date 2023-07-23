@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
 import "../interfaces/Interfaces.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "../Libraries/Validator.sol";
+import "./Validator.sol";
 
 /**
  * @author Heisenberg

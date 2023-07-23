@@ -3,7 +3,7 @@
 pragma solidity 0.8.4;
 
 import "../interfaces/Interfaces.sol";
-import "../Libraries/Validator.sol";
+import "./Validator.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
 /**

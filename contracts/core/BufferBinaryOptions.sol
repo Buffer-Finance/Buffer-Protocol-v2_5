@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interfaces/Interfaces.sol";
-import "../Libraries/OptionMath.sol";
+import "./OptionMath.sol";
 
 /**
  * @author Heisenberg
