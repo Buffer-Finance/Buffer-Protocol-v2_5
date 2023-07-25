@@ -524,7 +524,7 @@ def main():
             account_registrar.abi,
             "grantRole",
             ADMIN_ROLE,
-            open_keeper,
+            admin.address,
             sender=admin,
         )
         transact(

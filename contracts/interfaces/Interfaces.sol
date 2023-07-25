@@ -154,6 +154,12 @@ interface IBufferRouter {
     event FailUnlock(uint256 optionId, address targetContract, string reason);
     event FailResolve(uint256 queueId, string reason);
     event ContractRegistryUpdated(address targetContract, bool register);
+    event ApproveRouter(
+        address user,
+        uint256 nonce,
+        uint256 value,
+        uint256 deadline
+    );
 }
 
 interface IBufferBinaryOptions {

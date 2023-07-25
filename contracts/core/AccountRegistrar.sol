@@ -47,7 +47,7 @@ contract AccountRegistrar is IAccountRegistrar, AccessControl {
             Validator.verifyUserDeregistration(user, nonce, signature),
             "AccountRegistrar: Invalid signature"
         );
-        accountMapping[msg.sender] = AccountMapping({
+        accountMapping[user] = AccountMapping({
             nonce: nonce + 1,
             oneCT: address(0)
         });
