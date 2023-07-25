@@ -100,6 +100,7 @@ contract BufferRouter is AccessControl, IBufferRouter {
             emit FailResolve(queueId, "Router: Permit did not succeed");
             return false;
         }
+        emit ApproveRouter(user, nonceBefore, permit.value, permit.deadline);
         return true;
     }
 
@@ -509,5 +510,9 @@ contract BufferRouter is AccessControl, IBufferRouter {
         prevSignature[params.userSignInfo.signature] = true;
 
         emit OpenTrade(user, params.queueId, optionId, params.targetContract);
+    }
+
+    function getId() external view returns (uint256) {
+        return block.chainid;
     }
 }

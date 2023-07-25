@@ -30,7 +30,7 @@ library Validator {
                     ),
                     keccak256(bytes("Validator")),
                     keccak256(bytes("1")),
-                    1,
+                    block.chainid,
                     address(this)
                 )
             );

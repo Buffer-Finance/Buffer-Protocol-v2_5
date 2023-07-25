@@ -159,7 +159,7 @@ def main():
         decimals = 6
         is_testnet_token = True
         nft_base_contract_address = ""
-        account_registrar_address = "0x9CAE1958dCBe6d22Ca37D2a3a544400f0e976240"
+        # account_registrar_address = "0x9CAE1958dCBe6d22Ca37D2a3a544400f0e976240"
         booster = "0x58E66d360d65Da8d7907768f826D86F411d0f849"
         nft_contract_address = "0xf494F435cb2068559406C77b7271DD7d6aF5B860"
         token_contract_address = "0x50E345c95a3c1E5085AE886FF4AF05Efa2403c90"
@@ -332,7 +332,7 @@ def main():
                 sfd,
                 sender=admin,
             )
-            save_flat(BufferRouter, "BufferRouter")
+            # save_flat(BufferRouter, "BufferRouter")
 
     else:
         router_contract = BufferRouter.at(router_contract_address)
@@ -463,7 +463,7 @@ def main():
                 BufferBinaryOptions,
                 [],
             )
-            save_flat(BufferBinaryOptions, "BufferBinaryOptions")
+            # save_flat(BufferBinaryOptions, "BufferBinaryOptions")
             if is_testnet_token:
                 transact(
                     token_contract.address,
@@ -524,7 +524,7 @@ def main():
             account_registrar.abi,
             "grantRole",
             ADMIN_ROLE,
-            open_keeper,
+            admin.address,
             sender=admin,
         )
         transact(

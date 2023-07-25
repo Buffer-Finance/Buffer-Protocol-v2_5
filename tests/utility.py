@@ -421,7 +421,6 @@ class BinaryOptionTesting(object):
     def get_register_signature(self, one_ct, user):
         web3 = brownie.network.web3
         key = user.private_key
-
         domain = {
             "name": "Validator",
             "version": "1",
@@ -519,9 +518,12 @@ class BinaryOptionTesting(object):
             {"from": self.accounts[0]},
         )
 
+        nonce = self.registrar.accountMapping(user.address)[1]
         self.registrar.deregisterAccount(
             user.address, self.get_deregister_signature(user), {"from": self.owner}
         )
+        assert self.registrar.accountMapping(user.address)[0] == ADDRESS_0
+        assert self.registrar.accountMapping(user.address)[1] == nonce + 1
         txn = self.registrar.registerAccount(
             one_ct.address,
             user.address,
