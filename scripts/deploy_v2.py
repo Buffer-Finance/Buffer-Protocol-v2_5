@@ -75,42 +75,44 @@ def main():
     ]
 
     asset_pairs = [
-        {
-            "token1": "BTC",
-            "token2": "USD",
-            "full_name": "Bitcoin",
-            "asset_category": 1,
-            "payout": 65,
-            "minFee": int(1e6),
-            "platformFee": int(1e5),
-            "minPeriod": 3 * 60,
-            "maxPeriod": 4 * 60 * 60,
-            "max_trade_size": int(1000e6),
-            "max_market_oi": int(50000e6),
-        },
-        {
-            "token1": "ETH",
-            "token2": "USD",
-            "full_name": "Ethereum",
-            "asset_category": 1,
-            "payout": 65,
-            "minFee": int(1e6),
-            "platformFee": int(1e5),
-            "minPeriod": 3 * 60,
-            "maxPeriod": 4 * 60 * 60,
-            "max_trade_size": int(1000e6),
-            "max_market_oi": int(50000e6),
-        },
+        # {
+        #     "token1": "BTC",
+        #     "token2": "USD",
+        #     "full_name": "Bitcoin",
+        #     "asset_category": 1,
+        #     "payout": 65,
+        #     "minFee": int(1e6),
+        #     "platformFee": int(1e5),
+        #     "minPeriod": 3 * 60,
+        #     "maxPeriod": 4 * 60 * 60,
+        #     "max_trade_size": int(1000e6),
+        #     "max_market_oi": int(50000e6),
+        # },
+        # {
+        #     "token1": "ETH",
+        #     "token2": "USD",
+        #     "full_name": "Ethereum",
+        #     "asset_category": 1,
+        #     "payout": 65,
+        #     "minFee": int(1e6),
+        #     "platformFee": int(1e5),
+        #     "minPeriod": 3 * 60,
+        #     "maxPeriod": 4 * 60 * 60,
+        #     "max_trade_size": int(1000e6),
+        #     "max_market_oi": int(50000e6),
+        # },
         # {
         #     "token1": "EUR",
         #     "token2": "USD",
         #     "full_name": "Euro",
         #     "asset_category": 0,
         #     "payout": 65,
-        #     "minPeriod": 15 * 60,
+        #     "minFee": int(1e6),
+        #     "platformFee": int(1e5),
+        #     "minPeriod": 3 * 60,
         #     "maxPeriod": 4 * 60 * 60,
-        #     "max_trade_size": int(2e6),
-        #     "max_market_oi": int(10e7),
+        #     "max_trade_size": int(1000e6),
+        #     "max_market_oi": int(50000e6),
         # },
         # {
         #     "token1": "GBP",
@@ -118,11 +120,39 @@ def main():
         #     "full_name": "Pound",
         #     "asset_category": 0,
         #     "payout": 65,
-        #     "minPeriod": 15 * 60,
+        #     "minFee": int(1e6),
+        #     "platformFee": int(1e5),
+        #     "minPeriod": 3 * 60,
         #     "maxPeriod": 4 * 60 * 60,
-        #     "max_trade_size": int(2e6),
-        #     "max_market_oi": int(10e7),
+        #     "max_trade_size": int(1000e6),
+        #     "max_market_oi": int(50000e6),
         # },
+        {
+            "token1": "XAU",
+            "token2": "USD",
+            "full_name": "Gold",
+            "asset_category": 2,
+            "payout": 65,
+            "minFee": int(1e6),
+            "platformFee": int(1e5),
+            "minPeriod": 3 * 60,
+            "maxPeriod": 4 * 60 * 60,
+            "max_trade_size": int(1000e6),
+            "max_market_oi": int(50000e6),
+        },
+        {
+            "token1": "XAG",
+            "token2": "USD",
+            "full_name": "Silver",
+            "asset_category": 2,
+            "payout": 65,
+            "minFee": int(1e6),
+            "platformFee": int(1e5),
+            "minPeriod": 3 * 60,
+            "maxPeriod": 4 * 60 * 60,
+            "max_trade_size": int(1000e6),
+            "max_market_oi": int(50000e6),
+        },
     ]
     initialLiquidityForTestnet = int(499999.786093e6)
     if network.show_active() == "development":
@@ -159,12 +189,14 @@ def main():
         decimals = 6
         is_testnet_token = True
         nft_base_contract_address = ""
-        # account_registrar_address = "0x9CAE1958dCBe6d22Ca37D2a3a544400f0e976240"
+        pool_oi_storage = "0x69fEC5e3500F161739c428355caeFa09Cf13f4Ae"
+        pool_oi_config = "0x9b308eabe572D5c9132B035476E2ecD5802319ac"
+        account_registrar_address = "0xF93545296A467C50d05eC1A4F356A3415dc20268"
         booster = "0x58E66d360d65Da8d7907768f826D86F411d0f849"
         nft_contract_address = "0xf494F435cb2068559406C77b7271DD7d6aF5B860"
         token_contract_address = "0x50E345c95a3c1E5085AE886FF4AF05Efa2403c90"
-        # pool_address = "0xEAf4738C83B48055b54B5E9E48a96A7ee6CbB412"
-        # router_contract_address = "0x8e012a532bEbD89CC7b9b8B3Fd2a66605038F22D"
+        pool_address = "0x55Ded741F9c097A95F117a08334D1fBb70A5B05D"
+        router_contract_address = "0x8Fd65D9c94c1cA9ffE48D412Fc2637Ae0176BB03"
         referral_storage_address = "0x7Fd89bE6309Dcb7E147D172E73F04b52cee6313a"
         # option_reader_address = "0x2C1D6877f6C9B31124D803c5Aa9D0518313A042A"
         faucet_address = "0x8097Fecbb9081191A81DE5295d1D68344EA783fF"
@@ -266,20 +298,18 @@ def main():
         )
         booster = booster.address
 
-    # deploy_contract(admin, network, ABDKMath64x64, [])
-    # option_math = deploy_contract(admin, network, OptionMath, [])
-    # validator = deploy_contract(admin, network, Validator, [])
-    # ABDKMath64x64.at("0x3C1eDC6e0f9813dB791E02DB1438F5F463873c02")
-    # OptionMath.at("0x5C27ed7B5F6cC3374e45cC917e8Ce1AbCE715fCD")
-    # Validator.at("0xfAcca5657C99ACa8Cf81179Bbe3789F17Fcf724D")
+    if not pool_oi_storage:
+        pool_oi_storage = deploy_contract(admin, network, PoolOIStorage, [])
+    else:
+        pool_oi_storage = PoolOIStorage.at(pool_oi_storage)
 
-    pool_oi_storage = deploy_contract(admin, network, PoolOIStorage, [])
-    pool_oi_config = deploy_contract(
-        admin, network, PoolOIConfig, [max_pool_oi, pool_oi_storage.address]
-    )
+    if not pool_oi_config:
+        pool_oi_config = deploy_contract(
+            admin, network, PoolOIConfig, [max_pool_oi, pool_oi_storage.address]
+        )
+    else:
+        pool_oi_config = PoolOIConfig.at(pool_oi_config)
 
-    # pool_oi_storage = PoolOIStorage.at("0x83eFdEB63ED6707023fa0B994f9D6c554043fb1a")
-    # pool_oi_config = PoolOIConfig.at("0x5a9cE2AF5000B52e3639a0E682Bc25ca415572D7")
     ########### Router ###########
 
     if not router_contract_address:
@@ -427,7 +457,7 @@ def main():
                 sender=admin,
             )
 
-            if asset_pair["asset_category"] == 0:
+            if asset_pair["asset_category"] != 1:
                 transact(
                     option_config.address,
                     option_config.abi,
@@ -672,7 +702,7 @@ def main():
             option_config.address,
             option_config.abi,
             "setEarlyCloseThreshold",
-            0,
+            60,
             sender=admin,
         )
 
