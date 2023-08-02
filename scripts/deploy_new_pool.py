@@ -57,7 +57,7 @@ def main():
     option_reader_address = None
     sfd = None
     creation_window_address = None
-    max_pool_oi = 100000e6
+    max_pool_oi = 100000e18
     mainnet = "arbitrum-main-fork"
     referrerTierStep = [4, 10, 16]
     referrerTierDiscount = [int(25e3), int(50e3), int(75e3)]
