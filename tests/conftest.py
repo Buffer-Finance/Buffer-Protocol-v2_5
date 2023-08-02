@@ -25,7 +25,7 @@ def isolate(fn_isolation):
 @pytest.fixture(scope="module")
 def contracts(
     accounts,
-    FakeUSDC,
+    FakeToken,
     BFR,
     BufferBinaryPool,
     BufferBinaryOptions,
@@ -49,7 +49,7 @@ def contracts(
     admin = accounts.add()
     ibfr_contract = BFR.deploy({"from": accounts[0]})
     sfd = accounts.add()
-    tokenX = FakeUSDC.deploy({"from": accounts[0]})
+    tokenX = FakeToken.deploy({"from": accounts[0]})
     # ABDKMath64x64.deploy({"from": accounts[0]})
     # OptionMath.deploy({"from": accounts[0]})
     # validator = Validator.deploy({"from": accounts[0]})

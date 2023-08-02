@@ -158,7 +158,8 @@ interface IBufferRouter {
         address user,
         uint256 nonce,
         uint256 value,
-        uint256 deadline
+        uint256 deadline,
+        address tokenX
     );
 }
 

@@ -4,8 +4,8 @@ import "./interfaces/Interfaces.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract PoolOIConfig is Ownable {
-    uint256 private _maxPoolOI;
-    IPoolOIStorage private _poolOIStorage;
+    uint256 public _maxPoolOI;
+    IPoolOIStorage public _poolOIStorage;
 
     constructor(uint256 maxPoolOI, IPoolOIStorage poolOIStorage) {
         _maxPoolOI = maxPoolOI;
