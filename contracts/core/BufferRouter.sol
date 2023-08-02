@@ -22,7 +22,6 @@ contract BufferRouter is AccessControl, IBufferRouter {
     address public publisher;
     address public sfPublisher;
     address public admin;
-    bool public isInPrivateKeeperMode = true;
     IAccountRegistrar public accountRegistrar;
 
     mapping(uint256 => QueuedTrade) public queuedTrades;
@@ -63,10 +62,6 @@ contract BufferRouter is AccessControl, IBufferRouter {
         bool _isActive
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         isKeeper[_keeper] = _isActive;
-    }
-
-    function setInPrivateKeeperMode() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        isInPrivateKeeperMode = !isInPrivateKeeperMode;
     }
 
     /************************************************
@@ -347,10 +342,7 @@ contract BufferRouter is AccessControl, IBufferRouter {
      *  INTERNAL FUNCTIONS
      ***********************************************/
     function _validateKeeper() private view {
-        require(
-            !isInPrivateKeeperMode || isKeeper[msg.sender],
-            "Keeper: forbidden"
-        );
+        require(isKeeper[msg.sender], "Keeper: forbidden");
     }
 
     function getAccountMapping(

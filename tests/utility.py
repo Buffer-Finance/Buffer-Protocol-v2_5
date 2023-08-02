@@ -109,7 +109,7 @@ class BinaryOptionTesting(object):
         self.binary_pool.provide(self.liquidity, 0, {"from": self.owner})
         self.router.setContractRegistry(self.binary_options.address, True)
         self.router.setContractRegistry(self.binary_options_2.address, True)
-        self.router.setInPrivateKeeperMode() if self.router.isInPrivateKeeperMode() else None
+        self.router.setKeeper(self.bot, True, {"from": self.owner})
 
     def time_travel(self, day_of_week, hour, to_minute):
         # Get the current block timestamp
