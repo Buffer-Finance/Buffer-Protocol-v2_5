@@ -92,7 +92,7 @@ contract Booster is Ownable, IBooster, AccessControl {
         uint256 price = couponPrice - discount;
         require(token.balanceOf(user) >= price, "Not enough balance");
 
-        token.safeTransferFrom(user, address(this), couponPrice);
+        token.safeTransferFrom(user, address(this), price);
         userBoostTrades[tokenAddress][user]
             .totalBoostTrades += MAX_TRADES_PER_BOOST;
 
