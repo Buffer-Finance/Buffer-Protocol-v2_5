@@ -142,11 +142,19 @@ contract BufferRouter is AccessControl, IBufferRouter {
                 if (!success) continue;
             }
             if (params[index].register.shouldRegister) {
-                accountRegistrar.registerAccount(
-                    params[index].register.oneCT,
-                    user,
-                    params[index].register.signature
-                );
+                try
+                    accountRegistrar.registerAccount(
+                        params[index].register.oneCT,
+                        user,
+                        params[index].register.signature
+                    )
+                {} catch Error(string memory reason) {
+                    emit FailResolve(
+                        currentParams.queueId,
+                        "Router: Registration failed"
+                    );
+                    continue;
+                }
             }
 
             (address signer, uint256 nonce) = getAccountMapping(user);
