@@ -202,7 +202,7 @@ contract BufferBinaryPool is
 
         ll.locked = false;
         lockedPremium = lockedPremium - ll.premium;
-        lockedAmount = lockedAmount - ll.amount;
+        lockedAmount = lockedAmount - transferTokenXAmount;
         tokenX.safeTransfer(to, transferTokenXAmount);
 
         if (transferTokenXAmount <= ll.premium)

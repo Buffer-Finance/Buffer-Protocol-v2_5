@@ -392,7 +392,15 @@ contract BufferBinaryOptions is
         } else {
             profit = option.lockedAmount;
         }
-        pool.send(optionID, user, profit);
+        pool.send(optionID, address(this), option.lockedAmount);
+        tokenX.safeTransfer(user, profit);
+        if (profit < option.lockedAmount) {
+            tokenX.safeTransfer(address(pool), option.lockedAmount - profit);
+        }
+
+        if (profit <= option.premium)
+            emit LpProfit(optionID, option.premium - profit);
+        else emit LpLoss(optionID, profit - option.premium);
 
         // Burn the option
         _burn(optionID);
