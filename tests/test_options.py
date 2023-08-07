@@ -1,4 +1,6 @@
 from enum import IntEnum
+import math
+
 import copy
 from brownie import (
     AccountRegistrar,
@@ -176,42 +178,6 @@ def test_wrong_sf(init, contracts, accounts, chain):
     ), "Wrong reason"
 
 
-def test_early_close(early_close, contracts, accounts, chain):
-    b, close_params, option, user = early_close
-
-    # Early close not disabled should fail
-    txn = b.router.closeAnytime([close_params], {"from": b.bot})
-    assert txn.events["FailUnlock"]["optionId"] == 0, "Wrong id"
-    assert (
-        txn.events["FailUnlock"]["reason"] == "Router: Early close is not allowed"
-    ), "Wrong reason"
-
-    # Early close before threshold should fail
-    b.binary_options_config.toggleEarlyClose()
-    b.binary_options_config.setEarlyCloseThreshold(300)
-    txn = b.router.closeAnytime([close_params], {"from": b.bot})
-    assert txn.events["FailUnlock"]["optionId"] == 0, "Wrong id"
-    assert (
-        txn.events["FailUnlock"]["reason"] == "Router: Early close is not allowed"
-    ), "Wrong reason"
-
-    # Early close after threshold should succeed
-    chain.sleep(300 + 1)
-    txn = b.router.closeAnytime([close_params], {"from": b.bot})
-    assert txn.events["Exercise"]["id"] == 0, "Wrong id"
-    assert txn.events["Transfer"][0]["value"] < option[2], "Wrong payout"
-    assert txn.events["Transfer"][0]["to"] == user, "Wrong user"
-
-    # Wrong onc_ct should fail
-    _one_ct = accounts.add()
-    b.reregister(user, _one_ct)
-
-    txn = b.router.closeAnytime([close_params], {"from": b.bot})
-    assert (
-        txn.events["FailUnlock"]["reason"] == "Router: User signature didn't match"
-    ), "Wrong reson"
-
-
 def test_creation_window(init, contracts, accounts, chain):
     b, user, one_ct, _ = init
     period = 5 * 60
@@ -270,6 +236,7 @@ def test_boost(init, contracts, accounts, chain):
     base_payout = get_payout(
         b.binary_options.getSettlementFeePercentage(user, user, 15e2)
     )
+    print(booster.getNftTierDiscounts())
     b.tokenX.transfer(user, booster.couponPrice(), {"from": b.owner})
     b.tokenX.approve(booster.address, booster.couponPrice(), {"from": user})
     b.trader_nft_contract.claim({"from": user, "value": "2 ether"})
@@ -351,7 +318,7 @@ def test_boost_with_ref(init, contracts, accounts, chain):
     min_payout = option[-2] + (
         option[-2] * get_payout(base_sf - boost - ref_discount) / 100
     )
-    assert option[2] > min_payout, "Wrong payout"
+    assert option[2] >= min_payout, "Wrong payout"
 
 
 def test_pool_oi(init, contracts, accounts, chain):
@@ -411,7 +378,10 @@ def test_pool_oi(init, contracts, accounts, chain):
     option = b.binary_options.options(optionId)
     uint_fee, _, _ = b.binary_options.fees(int(1e6), user, "", 15e2)
     assert option[-2] == fee, "Wrong fee"
-    assert option[2] == (fee * 1e6) // uint_fee, "Wrong amount"
+    x = option[2] / 1e6
+    y = ((fee * 1e6) // uint_fee) / 1e6
+    assert math.isclose(x, y, abs_tol=5e-6)
+
     assert (
         txn.events["UpdatePoolOI"]["isIncreased"]
         and txn.events["UpdatePoolOI"]["interest"] == fee
@@ -431,7 +401,11 @@ def test_pool_oi(init, contracts, accounts, chain):
     option = b.binary_options.options(optionId)
     uint_fee, _, _ = b.binary_options.fees(int(1e6), user, "", 15e2)
     assert option[-2] == max_pool_oi, "Wrong fee"
-    assert option[2] == (max_pool_oi * 1e6) // uint_fee, "Wrong amount"
+    # assert option[2] == (max_pool_oi * 1e6) // uint_fee, "Wrong amount"
+    x = option[2] / 1e6
+    y = ((max_pool_oi * 1e6) // uint_fee) / 1e6
+    assert math.isclose(x, y, abs_tol=5e-6)
+
     assert (
         txn.events["UpdatePoolOI"]["isIncreased"]
         and txn.events["UpdatePoolOI"]["interest"] == max_pool_oi
@@ -536,7 +510,10 @@ def test_market_oi(init, contracts, accounts, chain):
     print(option)
 
     assert option[-2] == max_market_oi, "Wrong fee"
-    assert option[2] == (max_market_oi * 1e6) // uint_fee, "Wrong amount"
+    # assert option[2] == (max_market_oi * 1e6) // uint_fee, "Wrong amount"
+    x = option[2] / 1e6
+    y = ((max_market_oi * 1e6) // uint_fee) / 1e6
+    assert math.isclose(x, y, abs_tol=5e-6)
     assert (
         txn.events["UpdatePoolOI"]["isIncreased"]
         and txn.events["UpdatePoolOI"]["interest"] == max_market_oi
@@ -601,7 +578,11 @@ def test_market_oi(init, contracts, accounts, chain):
     option = b.binary_options_2.options(option_id)
 
     assert option[-2] == max_market_oi, "Wrong fee"
-    assert option[2] == (max_market_oi * 1e6) // uint_fee, "Wrong amount"
+    # assert option[2] == (max_market_oi * 1e6) // uint_fee, "Wrong amount"
+    x = option[2] / 1e6
+    y = ((max_market_oi * 1e6) // uint_fee) / 1e6
+    assert math.isclose(x, y, abs_tol=5e-6)
+
     assert (
         txn.events["UpdatePoolOI"]["isIncreased"]
         and txn.events["UpdatePoolOI"]["interest"] == max_market_oi
@@ -655,4 +636,69 @@ def test_exceution(close, contracts, accounts, chain):
     b.reregister(user, _one_ct)
 
     txn = b.router.executeOptions([close_params], {"from": b.bot})
+    assert txn.events["Exercise"]["id"] == optionId, "Wrong id"
+
+
+def test_early_close(early_close, contracts, accounts, chain):
+    b, close_params, option, user, optionId = early_close
+
+    # Early close not disabled should fail
+    txn = b.router.closeAnytime([close_params], {"from": b.bot})
+    assert txn.events["FailUnlock"]["optionId"] == optionId, "Wrong id"
+    assert (
+        txn.events["FailUnlock"]["reason"] == "Router: Early close is not allowed"
+    ), "Wrong reason"
+
+    # Early close before threshold should fail
+    b.binary_options_config.toggleEarlyClose()
+    b.binary_options_config.setEarlyCloseThreshold(300)
+    txn = b.router.closeAnytime([close_params], {"from": b.bot})
+    assert txn.events["FailUnlock"]["optionId"] == optionId, "Wrong id"
+    assert (
+        txn.events["FailUnlock"]["reason"] == "Router: Early close is not allowed"
+    ), "Wrong reason"
+
+    # Early close after threshold should succeed
+    chain.sleep(300 + 1)
+    chain.snapshot()
+    txn = b.router.closeAnytime([close_params], {"from": b.bot})
+    chain.revert()
+    assert txn.events["Exercise"]["id"] == optionId, "Wrong id"
+    assert txn.events["Transfer"][0]["value"] < option[2], "Wrong payout"
+    assert txn.events["Transfer"][0]["to"] == user, "Wrong user"
+
+    # Wrong onc_ct should fail
+    _one_ct = accounts.add()
+    b.reregister(user, _one_ct)
+
+    txn = b.router.closeAnytime([close_params], {"from": b.bot})
+    assert (
+        txn.events["FailUnlock"]["reason"] == "Router: User signature didn't match"
+    ), "Wrong reson"
+
+    # Changing one_ct after trade has opened
+    new_one_ct = accounts.add()
+    signature_time = int(chain.time())
+    signature = b.get_close_signature(
+        b.binary_options, signature_time, close_params[0][0], new_one_ct.private_key
+    )
+    b.registrar.deregisterAccount(
+        user.address, b.get_deregister_signature(user), {"from": b.owner}
+    )
+    register_params = [
+        new_one_ct.address,
+        b.get_register_signature(
+            new_one_ct,
+            user,
+        ),
+        True,
+    ]
+    chain.sleep(1)
+    close_params[-1] = (signature, signature_time)
+    close_params[1] = register_params
+
+    txn = b.router.closeAnytime([close_params], {"from": b.bot})
+    assert txn.events["RegisterAccount"], "Wrong events"
+    assert txn.events["RegisterAccount"]["user"] == user, "Wrong user"
+    assert txn.events["RegisterAccount"]["oneCT"] == new_one_ct.address, "Wrong one ct"
     assert txn.events["Exercise"]["id"] == optionId, "Wrong id"

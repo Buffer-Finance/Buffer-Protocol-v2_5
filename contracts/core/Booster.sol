@@ -38,6 +38,14 @@ contract Booster is Ownable, IBooster, AccessControl {
         }
     }
 
+    function getNftTierDiscounts() external view returns (uint8[4] memory) {
+        uint8[4] memory _nftTierDiscounts;
+        for (uint8 i; i < 4; i++) {
+            _nftTierDiscounts[i] = nftTierDiscounts[i];
+        }
+        return _nftTierDiscounts;
+    }
+
     function getUserBoostData(
         address user,
         address token

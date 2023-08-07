@@ -184,9 +184,26 @@ contract BufferRouter is AccessControl, IBufferRouter {
             IBufferRouter.SignInfo memory publisherSignInfo = params
                 .publisherSignInfo;
             QueuedTrade memory queuedTrade = queuedTrades[optionInfo.queueId];
+            address owner = optionsContract.ownerOf(params.optionId);
             (, , , , , , , uint256 createdAt) = optionsContract.options(
                 params.optionId
             );
+            if (closeParam.register.shouldRegister) {
+                try
+                    accountRegistrar.registerAccount(
+                        closeParam.register.oneCT,
+                        owner,
+                        closeParam.register.signature
+                    )
+                {} catch Error(string memory reason) {
+                    emit FailUnlock(
+                        params.optionId,
+                        params.targetContract,
+                        reason
+                    );
+                    continue;
+                }
+            }
             if (
                 !queuedTrade.isEarlyCloseAllowed ||
                 (block.timestamp - createdAt <

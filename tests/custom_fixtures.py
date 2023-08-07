@@ -38,7 +38,7 @@ def early_close(contracts, accounts, chain):
 
     b.binary_options_config.toggleEarlyClose()
 
-    optionId, queueId, trade_params, _ = b.create(user, one_ct)
+    optionId, queueId, trade_params, _ = b.create(user, one_ct, queue_id=2)
     option = b.binary_options.options(optionId)
     closing_price = 400e8
     close_params = [
@@ -56,6 +56,14 @@ def early_close(contracts, accounts, chain):
     chain.sleep(1)
 
     current_time = int(chain.time())
+    register_params = [
+        one_ct.address,
+        b.get_register_signature(
+            one_ct,
+            user,
+        ),
+        False,
+    ]
     close_params = [
         (
             *close_params,
@@ -64,9 +72,10 @@ def early_close(contracts, accounts, chain):
                 current_time,
             ],
         ),
+        register_params,
         (signature, signature_time),
     ]
-    return b, close_params, option, user
+    return b, close_params, option, user, optionId
 
 
 @pytest.fixture()

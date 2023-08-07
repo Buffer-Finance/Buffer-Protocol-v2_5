@@ -195,7 +195,7 @@ def main():
         # pool_oi_storage = "0x69fEC5e3500F161739c428355caeFa09Cf13f4Ae"
         # pool_oi_config = "0x9b308eabe572D5c9132B035476E2ecD5802319ac"
         # account_registrar_address = "0xF93545296A467C50d05eC1A4F356A3415dc20268"
-        booster = "0x58E66d360d65Da8d7907768f826D86F411d0f849"
+        booster = "0xC5BD9D355919AC013c37C9bA2F669D9910fa30B5"
         nft_contract_address = "0xf494F435cb2068559406C77b7271DD7d6aF5B860"
         # token_contract_address = "0x50E345c95a3c1E5085AE886FF4AF05Efa2403c90"
         # pool_address = "0x55Ded741F9c097A95F117a08334D1fBb70A5B05D"
@@ -523,6 +523,14 @@ def main():
                 network,
                 Faucet,
                 [token_contract_address, admin.address, 1683475200],
+            )
+            transact(
+                token_contract.address,
+                token_contract.abi,
+                "transfer",
+                faucet.address,
+                int(1e12),
+                sender=admin,
             )
 
             if is_testnet_token:

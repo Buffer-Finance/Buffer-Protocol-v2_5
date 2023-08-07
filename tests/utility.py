@@ -110,6 +110,12 @@ class BinaryOptionTesting(object):
         self.router.setContractRegistry(self.binary_options.address, True)
         self.router.setContractRegistry(self.binary_options_2.address, True)
         self.router.setInPrivateKeeperMode() if self.router.isInPrivateKeeperMode() else None
+        ADMIN_ROLE = self.registrar.ADMIN_ROLE()
+        self.registrar.grantRole(
+            ADMIN_ROLE,
+            self.accounts[0],
+            {"from": self.accounts[0]},
+        )
 
     def time_travel(self, day_of_week, hour, to_minute):
         # Get the current block timestamp
@@ -511,13 +517,6 @@ class BinaryOptionTesting(object):
         return sig.v, sig.r, sig.s
 
     def reregister(self, user, one_ct):
-        ADMIN_ROLE = self.registrar.ADMIN_ROLE()
-        self.registrar.grantRole(
-            ADMIN_ROLE,
-            self.accounts[0],
-            {"from": self.accounts[0]},
-        )
-
         nonce = self.registrar.accountMapping(user.address)[1]
         self.registrar.deregisterAccount(
             user.address, self.get_deregister_signature(user), {"from": self.owner}

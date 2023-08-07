@@ -156,7 +156,7 @@ def main():
             "max_market_oi": int(50000e18),
         },
     ]
-    initialLiquidityForTestnet = int(499999.786093e6)
+    initialLiquidityForTestnet = int(499999.786093e18)
     if network.show_active() == "development":
         allow_revert = True
         pool_admin = accounts.add()
@@ -191,17 +191,17 @@ def main():
         decimals = 6
         is_testnet_token = True
         nft_base_contract_address = ""
-        pool_oi_storage = "0x58bD16e903662AA149cdDace01B2faCb3F99dF57"
-        pool_oi_config = "0x14E015Fd8cDBeEb5785C5bf0bA1c6ADa8404BCDC"
-        account_registrar_address = "0x9A6405DA3c5120Cb643f85816da8ae938D27a252"
+        pool_oi_storage = ""
+        pool_oi_config = ""
+        account_registrar_address = "0xe3B182017Ed77b90e8bE452E520AA445C0F30825"
         booster = "0x58E66d360d65Da8d7907768f826D86F411d0f849"
         nft_contract_address = "0xf494F435cb2068559406C77b7271DD7d6aF5B860"
-        token_contract_address = "0x74409f389Bb05B6966761D86A96F109b309a3CeF"
+        # token_contract_address = "0x74409f389Bb05B6966761D86A96F109b309a3CeF"
         # pool_address = "0xe4a58950CA783b4106e8962C2350426AbBFA54D3"
-        router_contract_address = "0x697436699F3caDeF294560571362D708f45e3321"
+        router_contract_address = "0xfDdE951a9d75a80b8965f9D8639aEC5ee9Cd20cD"
         referral_storage_address = "0x7Fd89bE6309Dcb7E147D172E73F04b52cee6313a"
         # option_reader_address = "0x2C1D6877f6C9B31124D803c5Aa9D0518313A042A"
-        faucet_address = "0x60e11702FAFBDd0d755d680B11fC28392F9796A5"
+        # faucet_address = "0x60e11702FAFBDd0d755d680B11fC28392F9796A5"
         creation_window_address = "0x72b9de12C4FBBAc17f3394F7EA3aDE315d83C7c1"
         # option_config_address = "0x5f207f0097a794faDD99024370e4D12616A277d1"
         # options_address = "0x68aA6D8e947993Ff2647Ad83ca51dc471478b610"  # ETH-BTC
@@ -539,17 +539,6 @@ def main():
         all_options.append(options.address)
         all_configs.append(option_config.address)
         print(f"{Fore.YELLOW}Deployed {pair} at {options.address} {Style.RESET_ALL} ")
-        params = [
-            int(1e6),
-            900,
-            True,
-            options.address,
-            2922100000000,
-            50,
-            True,
-            "",
-            0,
-        ]
         transact(
             option_config.address,
             option_config.abi,

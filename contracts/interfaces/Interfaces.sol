@@ -136,6 +136,7 @@ interface IBufferRouter {
 
     struct CloseAnytimeParams {
         CloseTradeParams closeTradeParams;
+        Register register;
         SignInfo userSignInfo;
     }
 
