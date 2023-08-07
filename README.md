@@ -31,17 +31,17 @@ Deployment Chain(s)
 | [H-01]     | Payments for coupons to Booster are irretrievable                                 | High     | TBF   |
 | [H-02]     | BufferBinaryPool can permanently lock funds on early exercise                     | High     | TBF   |
 | [H-03]     | Market direction signature can be abused if privateKeeperMode is disabled         | High     | X     |
-| [H-04]     | closeAnytime timestamp is never validated against current timestamp               | High     | TBD   |
+| [H-04]     | closeAnytime timestamp is never validated against current timestamp               | High     | X     |
 | [H-05]     | closeAnyTime timestamp is never validated against pricing timestamp               | High     | X     |
 | [H-06]     | Settlement fee isn't applied correctly in BufferBinaryOptions#createFromRouter    | High     | TBD   |
 | [M-01]     | booster#buy fails to apply discount                                               | Medium   | TBF   |
 | [M-02]     | Transferred options can only be closed early by previous owner                    | Medium   | TBF   |
 | [M-03]     | Platform fee is methodology is incompatible with the use of multiple vaults       | Medium   | X     |
-| [L-01]     | Users can buy coupons for options that don't exist                                | Low      | TBD   |
+| [L-01]     | Users can buy coupons for options that don't exist                                | Low      | X     |
 | [L-02]     | Using a single IV value is restrictive and can unfairly price option payouts      | Low      | X     |
 | [L-03]     | registerAccount sub-call in BufferRouter#openTrades can revert entire transaction | Low      | TBF   |
-| [I-01]     | Booster#buy should support buying multiple boosts at a time                       | Info     | TBD   |
-| [I-02]     | OptionMath#\_decay is never used                                                  | Info     | TBD   |
+| [I-01]     | Booster#buy should support buying multiple boosts at a time                       | Info     | TBF   |
+| [I-02]     | OptionMath#\_decay is never used                                                  | Info     | TBF   |
 
 ## [H-01] Payments for coupons to Booster are irretrievable
 
