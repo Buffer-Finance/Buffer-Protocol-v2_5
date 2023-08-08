@@ -7,6 +7,7 @@ from brownie import (
     MarketOIConfig,
     PoolOIStorage,
 )
+import brownie
 from utility import utility
 import pytest
 from custom_fixtures import init, early_close, init_lo, close
@@ -23,6 +24,17 @@ def get_publisher_signature(b, closing_price, time):
         b.get_signature(b.binary_options, time, closing_price),
         time,
     ]
+
+
+def test_option_transfers(init, contracts, accounts, chain):
+    b, user, one_ct, trade_params = init
+    optionId, queueId, trade_params, txn = b.create(user, one_ct)
+
+    with brownie.reverts("Token transfer not allowed"):
+        b.binary_options.transferFrom(user, accounts[2], optionId, {"from": user})
+    b.binary_options.approveAddress(user, {"from": accounts[0]})
+    txn = b.binary_options.transferFrom(user, accounts[2], optionId, {"from": user})
+    assert txn.events["Transfer"], "Transfer event not emitted"
 
 
 def test_user_params(init, contracts, accounts, chain):
