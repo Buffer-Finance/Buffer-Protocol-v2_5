@@ -6,6 +6,7 @@ import "../interfaces/Interfaces.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
 
 /**
  * @author Heisenberg
@@ -85,8 +86,42 @@ contract Booster is Ownable, IBooster, AccessControl {
         emit SetBoostPercentage(boost);
     }
 
-    function buy(address tokenAddress, uint256 traderNFTId) external {
-        address user = msg.sender;
+    function approveViaSignature(
+        address tokenX,
+        address user,
+        Permit memory permit
+    ) internal {
+        IERC20Permit token = IERC20Permit(tokenX);
+        uint256 nonceBefore = token.nonces(user);
+        token.permit(
+            user,
+            address(this),
+            permit.value,
+            permit.deadline,
+            permit.v,
+            permit.r,
+            permit.s
+        );
+
+        uint256 nonceAfter = token.nonces(user);
+        if (nonceAfter != nonceBefore + 1) {
+            revert("Nonce didn't match");
+        }
+        emit ApproveTokenX(
+            user,
+            nonceBefore,
+            permit.value,
+            permit.deadline,
+            tokenX
+        );
+    }
+
+    function buy(
+        address tokenAddress,
+        uint256 traderNFTId,
+        address user,
+        Permit memory permit
+    ) external onlyOwner {
         ERC20 token = ERC20(tokenAddress);
 
         uint256 discount;
@@ -99,7 +134,9 @@ contract Booster is Ownable, IBooster, AccessControl {
                 100;
         uint256 price = couponPrice - discount;
         require(token.balanceOf(user) >= price, "Not enough balance");
-
+        if (permit.shouldApprove) {
+            approveViaSignature(tokenAddress, user, permit);
+        }
         token.safeTransferFrom(user, address(this), couponPrice);
         userBoostTrades[tokenAddress][user]
             .totalBoostTrades += MAX_TRADES_PER_BOOST;

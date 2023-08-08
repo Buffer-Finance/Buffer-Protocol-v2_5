@@ -21,6 +21,21 @@ interface IBooster {
         address token
     ) external view returns (uint256);
 
+    struct Permit {
+        uint256 value;
+        uint256 deadline;
+        uint8 v;
+        bytes32 r;
+        bytes32 s;
+        bool shouldApprove;
+    }
+    event ApproveTokenX(
+        address user,
+        uint256 nonce,
+        uint256 value,
+        uint256 deadline,
+        address tokenX
+    );
     event BuyCoupon(address indexed token, address indexed user, uint256 price);
     event SetPrice(uint256 couponPrice);
     event SetBoostPercentage(uint256 boost);

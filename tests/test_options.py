@@ -238,7 +238,7 @@ def test_boost(init, contracts, accounts, chain):
     )
     print(booster.getNftTierDiscounts())
     b.tokenX.transfer(user, booster.couponPrice(), {"from": b.owner})
-    b.tokenX.approve(booster.address, booster.couponPrice(), {"from": user})
+    # b.tokenX.approve(booster.address, booster.couponPrice(), {"from": user})
     b.trader_nft_contract.claim({"from": user, "value": "2 ether"})
     b.trader_nft_contract.safeMint(
         user,
@@ -247,7 +247,14 @@ def test_boost(init, contracts, accounts, chain):
         0,
         {"from": b.owner},
     )
-    booster.buy(b.tokenX.address, 0, {"from": user})
+    deadline = chain.time() + 3600
+    permit = [
+        booster.couponPrice(),
+        deadline,
+        *b.get_permit(booster.couponPrice(), deadline, user, spender=booster.address),
+        True,
+    ]
+    booster.buy(b.tokenX.address, 0, user, permit, {"from": b.owner})
 
     def check_payout(option_id):
         option = b.binary_options.options(option_id)
@@ -301,7 +308,7 @@ def test_boost_with_ref(init, contracts, accounts, chain):
         (b.binary_options.getSettlementFeePercentage(user, user, 15e2) * 2) / 100
     )
     b.tokenX.transfer(user, booster.couponPrice(), {"from": b.owner})
-    b.tokenX.approve(booster.address, booster.couponPrice(), {"from": user})
+    # b.tokenX.approve(booster.address, booster.couponPrice(), {"from": user})
     b.trader_nft_contract.claim({"from": user, "value": "2 ether"})
     b.trader_nft_contract.safeMint(
         user,
@@ -310,7 +317,14 @@ def test_boost_with_ref(init, contracts, accounts, chain):
         0,
         {"from": b.owner},
     )
-    booster.buy(b.tokenX.address, 0, {"from": user})
+    deadline = chain.time() + 3600
+    permit = [
+        booster.couponPrice(),
+        deadline,
+        *b.get_permit(booster.couponPrice(), deadline, user, spender=booster.address),
+        True,
+    ]
+    booster.buy(b.tokenX.address, 0, user, permit, {"from": b.owner})
     boost = base_sf - b.binary_options.getSettlementFeePercentage(user, user, base_sf)
 
     optionId, _, _, _ = b.create(user, one_ct, queue_id=0, params=trade_params)

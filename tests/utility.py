@@ -481,7 +481,7 @@ class BinaryOptionTesting(object):
         s = self.enc(msgParams, key)
         return s
 
-    def get_permit(self, allowance, deadline, user):
+    def get_permit(self, allowance, deadline, user, spender=None):
         web3 = brownie.network.web3
         key = user.private_key
         domain = {
@@ -506,7 +506,7 @@ class BinaryOptionTesting(object):
             "domain": domain,
             "message": {
                 "owner": user.address,
-                "spender": self.router.address,
+                "spender": spender or self.router.address,
                 "value": allowance,
                 "nonce": self.tokenX.nonces(user.address),
                 "deadline": deadline,
