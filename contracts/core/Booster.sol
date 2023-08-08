@@ -77,7 +77,11 @@ contract Booster is Ownable, IBooster, AccessControl {
         emit SetBoostPercentage(boost);
     }
 
-    function buy(address tokenAddress, uint256 traderNFTId) external {
+    function buy(
+        address tokenAddress,
+        uint256 traderNFTId,
+        uint256 coupons
+    ) external {
         address user = msg.sender;
         ERC20 token = ERC20(tokenAddress);
 
@@ -85,17 +89,19 @@ contract Booster is Ownable, IBooster, AccessControl {
         if (nftContract.tokenOwner(traderNFTId) == user)
             discount =
                 (couponPrice *
+                    coupons *
                     nftTierDiscounts[
                         nftContract.tokenTierMappings(traderNFTId)
                     ]) /
                 100;
-        uint256 price = couponPrice - discount;
+        uint256 price = (couponPrice * coupons) - discount;
         require(token.balanceOf(user) >= price, "Not enough balance");
 
-        token.safeTransferFrom(user, address(this), couponPrice);
-        userBoostTrades[tokenAddress][user]
-            .totalBoostTrades += MAX_TRADES_PER_BOOST;
+        token.safeTransferFrom(user, address(this), price);
+        userBoostTrades[tokenAddress][user].totalBoostTrades +=
+            MAX_TRADES_PER_BOOST *
+            coupons;
 
-        emit BuyCoupon(tokenAddress, user, couponPrice);
+        emit BuyCoupon(tokenAddress, user, price);
     }
 }

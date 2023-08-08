@@ -261,6 +261,27 @@ def test_referral(init, contracts, accounts, chain):
     print(b.binary_options.options(txn.events["OpenTrade"]["optionId"]))
 
 
+def test_boost_buy(init, contracts, accounts, chain):
+    b, user, one_ct, _ = init
+    user_1 = accounts.add()
+    booster = Booster.at(b.binary_options_config.boosterContract())
+    metadata_hash = "QmRu61jShPgiQp33UA5RNcULAvLU5JEPbnXGqEtBmVcdMg"
+    accounts[0].transfer(user_1, "10 ether")
+    b.trader_nft_contract.claim({"from": user_1, "value": "2 ether"})
+    b.trader_nft_contract.safeMint(
+        user_1,
+        metadata_hash,
+        1,
+        0,
+        {"from": b.owner},
+    )
+    b.tokenX.approve(booster.address, booster.couponPrice() * 5, {"from": user})
+    b.tokenX.transfer(user, booster.couponPrice() * 5, {"from": b.owner})
+    txn = booster.buy(b.tokenX.address, 0, 5, {"from": user})
+    assert booster.userBoostTrades(b.tokenX.address, user)[0] == 10, "Wrong boost"
+    assert txn.events["Transfer"]["value"] == booster.couponPrice() * 5, "Wrong amount"
+
+
 def test_boost(init, contracts, accounts, chain):
     b, user, one_ct, _ = init
     metadata_hash = "QmRu61jShPgiQp33UA5RNcULAvLU5JEPbnXGqEtBmVcdMg"
@@ -280,7 +301,7 @@ def test_boost(init, contracts, accounts, chain):
         0,
         {"from": b.owner},
     )
-    booster.buy(b.tokenX.address, 0, {"from": user})
+    booster.buy(b.tokenX.address, 0, 1, {"from": user})
 
     def check_payout(option_id):
         option = b.binary_options.options(option_id)
@@ -343,7 +364,7 @@ def test_boost_with_ref(init, contracts, accounts, chain):
         0,
         {"from": b.owner},
     )
-    booster.buy(b.tokenX.address, 0, {"from": user})
+    booster.buy(b.tokenX.address, 0, 1, {"from": user})
     boost = base_sf - b.binary_options.getSettlementFeePercentage(user, user, base_sf)
 
     optionId, _, _, _ = b.create(user, one_ct, queue_id=0, params=trade_params)
