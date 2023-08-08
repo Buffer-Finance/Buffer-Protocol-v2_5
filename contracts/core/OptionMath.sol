@@ -16,22 +16,6 @@ library OptionMath {
     int128 private constant CDF_CONST_2 = 0x0d3c84b78b749bd6b; // 3300 / 3989
 
     /**
-     * @notice calculate the exponential decay coefficient for a given interval
-     * @param oldTimestamp timestamp of previous update
-     * @param newTimestamp current timestamp
-     * @return 64x64 fixed point representation of exponential decay coefficient
-     */
-    function _decay(
-        uint256 oldTimestamp,
-        uint256 newTimestamp
-    ) internal pure returns (int128) {
-        return
-            ONE_64x64.sub(
-                (-ABDKMath64x64.divu(newTimestamp - oldTimestamp, 7 days)).exp()
-            );
-    }
-
-    /**
      * @notice calculate Choudhury’s approximation of the Black-Scholes CDF
      * @param input64x64 64x64 fixed point representation of random variable
      * @return 64x64 fixed point representation of the approximated CDF of x
