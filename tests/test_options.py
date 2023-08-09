@@ -640,10 +640,16 @@ def test_exceution(close, contracts, accounts, chain):
     chain.snapshot()
     txn = b.router.executeOptions([close_params], {"from": b.bot})
     chain.revert()
-
     assert txn.events["Exercise"]["id"] == optionId, "Wrong id"
-    assert txn.events["Transfer"][0]["value"] == option[2], "Wrong payout"
-    assert txn.events["Transfer"][0]["to"] == user, "Wrong user"
+    assert len(txn.events["Transfer"]) == 3, "Wrong transfer"
+    assert (
+        txn.events["Transfer"][1]["value"] == txn.events["Transfer"][0]["value"]
+    ), "Wrong payout"
+    assert txn.events["Transfer"][1]["to"] == user, "Wrong transfer"
+    assert (
+        txn.events["Transfer"][1]["from"] == txn.events["Transfer"][0]["to"]
+    ), "Wrong transfer"
+    assert txn.events["LpLoss"]["amount"] == option[2] - option[4], "Wrong lp loss"
 
     # Should succeed even after one_ct change
     _one_ct = accounts.add()
@@ -678,8 +684,22 @@ def test_early_close(early_close, contracts, accounts, chain):
     txn = b.router.closeAnytime([close_params], {"from": b.bot})
     chain.revert()
     assert txn.events["Exercise"]["id"] == optionId, "Wrong id"
-    assert txn.events["Transfer"][0]["value"] < option[2], "Wrong payout"
-    assert txn.events["Transfer"][0]["to"] == user, "Wrong user"
+    assert txn.events["Transfer"][0]["value"] == option[2], "Wrong transfer from pool"
+    assert len(txn.events["Transfer"]) == 4, "Wrong transfer"
+    assert txn.events["Transfer"][1]["value"] < option[2], "Wrong payout"
+    assert txn.events["Transfer"][1]["to"] == user, "Wrong transfer"
+    assert (
+        txn.events["Transfer"][1]["from"] == txn.events["Transfer"][0]["to"]
+    ), "Wrong transfer"
+    assert (
+        txn.events["Transfer"][2]["value"]
+        == option[2] - txn.events["Transfer"][1]["value"]
+    ), "Wrong transfer to pool"
+    assert txn.events["Transfer"][2]["to"] == b.binary_pool, "Wrong transfer"
+    assert (
+        txn.events["LpProfit"]["amount"]
+        == option[4] - txn.events["Transfer"][1]["value"]
+    ), "Wrong lp profit"
 
     # Wrong onc_ct should fail
     _one_ct = accounts.add()
