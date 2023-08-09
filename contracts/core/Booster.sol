@@ -21,6 +21,7 @@ contract Booster is Ownable, IBooster, AccessControl {
     uint256 public boostPercentage;
     bytes32 public constant OPTION_ISSUER_ROLE =
         keccak256("OPTION_ISSUER_ROLE");
+    address admin;
 
     mapping(address => mapping(address => UserBoostTrades))
         public userBoostTrades;
@@ -28,6 +29,7 @@ contract Booster is Ownable, IBooster, AccessControl {
 
     constructor(address _nft) {
         nftContract = ITraderNFT(_nft);
+        admin = msg.sender;
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
@@ -137,7 +139,7 @@ contract Booster is Ownable, IBooster, AccessControl {
         if (permit.shouldApprove) {
             approveViaSignature(tokenAddress, user, permit);
         }
-        token.safeTransferFrom(user, address(this), couponPrice);
+        token.safeTransferFrom(user, admin, couponPrice);
         userBoostTrades[tokenAddress][user]
             .totalBoostTrades += MAX_TRADES_PER_BOOST;
 
