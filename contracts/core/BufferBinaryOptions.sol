@@ -37,6 +37,7 @@ contract BufferBinaryOptions is
 
     mapping(uint256 => Option) public override options;
     mapping(address => uint256[]) public userOptionIds;
+    mapping(address => bool) public approvedAddresses;
     bytes32 public constant ROUTER_ROLE = keccak256("ROUTER_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
@@ -489,5 +490,26 @@ contract BufferBinaryOptions is
                 user,
                 address(tokenX)
             );
+    }
+
+    function approveAddress(
+        address addressToApprove
+    ) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        approvedAddresses[addressToApprove] = true;
+    }
+
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 tokenId
+    ) internal virtual override {
+        if (
+            from != address(0) &&
+            to != address(0) &&
+            approvedAddresses[to] == false &&
+            approvedAddresses[from] == false
+        ) {
+            revert("Token transfer not allowed");
+        }
     }
 }
