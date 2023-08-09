@@ -139,7 +139,7 @@ contract Booster is Ownable, IBooster, AccessControl {
         if (permit.shouldApprove) {
             approveViaSignature(tokenAddress, user, permit);
         }
-        token.safeTransferFrom(user, admin, couponPrice);
+        token.safeTransferFrom(user, admin, price);
         userBoostTrades[tokenAddress][user]
             .totalBoostTrades += MAX_TRADES_PER_BOOST;
 
