@@ -57,16 +57,15 @@ def main():
     option_reader_address = None
     sfd = None
     creation_window_address = None
-    max_pool_oi = 100000e6
+    max_pool_oi = 100000e18
     mainnet = "arbitrum-main-fork"
     referrerTierStep = [4, 10, 16]
     referrerTierDiscount = [int(25e3), int(50e3), int(75e3)]
     nftTierStep = [5, 10, 16, 24]
     lockupPeriod = 600
     account_registrar_address = None
-    pool_oi_storage = None
     pool_oi_config = None
-
+    pool_oi_storage = None
     market_times = [
         (17, 0, 23, 59),
         (0, 0, 23, 59),
@@ -84,12 +83,12 @@ def main():
             "full_name": "Bitcoin",
             "asset_category": 1,
             "payout": 65,
-            "minFee": int(1e6),
-            "platformFee": int(1e5),
+            "minFee": int(1e18),
+            "platformFee": int(1e17),
             "minPeriod": 3 * 60,
             "maxPeriod": 4 * 60 * 60,
-            "max_trade_size": int(1000e6),
-            "max_market_oi": int(50000e6),
+            "max_trade_size": int(1000e18),
+            "max_market_oi": int(50000e18),
         },
         {
             "token1": "ETH",
@@ -97,12 +96,12 @@ def main():
             "full_name": "Ethereum",
             "asset_category": 1,
             "payout": 65,
-            "minFee": int(1e6),
-            "platformFee": int(1e5),
+            "minFee": int(1e18),
+            "platformFee": int(1e17),
             "minPeriod": 3 * 60,
             "maxPeriod": 4 * 60 * 60,
-            "max_trade_size": int(1000e6),
-            "max_market_oi": int(50000e6),
+            "max_trade_size": int(1000e18),
+            "max_market_oi": int(50000e18),
         },
         {
             "token1": "EUR",
@@ -110,12 +109,12 @@ def main():
             "full_name": "Euro",
             "asset_category": 0,
             "payout": 65,
-            "minFee": int(1e6),
-            "platformFee": int(1e5),
+            "minFee": int(1e18),
+            "platformFee": int(1e17),
             "minPeriod": 3 * 60,
             "maxPeriod": 4 * 60 * 60,
-            "max_trade_size": int(1000e6),
-            "max_market_oi": int(50000e6),
+            "max_trade_size": int(1000e18),
+            "max_market_oi": int(50000e18),
         },
         {
             "token1": "GBP",
@@ -123,12 +122,12 @@ def main():
             "full_name": "Pound",
             "asset_category": 0,
             "payout": 65,
-            "minFee": int(1e6),
-            "platformFee": int(1e5),
+            "minFee": int(1e18),
+            "platformFee": int(1e17),
             "minPeriod": 3 * 60,
             "maxPeriod": 4 * 60 * 60,
-            "max_trade_size": int(1000e6),
-            "max_market_oi": int(50000e6),
+            "max_trade_size": int(1000e18),
+            "max_market_oi": int(50000e18),
         },
         {
             "token1": "XAU",
@@ -136,12 +135,12 @@ def main():
             "full_name": "Gold",
             "asset_category": 2,
             "payout": 65,
-            "minFee": int(1e6),
-            "platformFee": int(1e5),
+            "minFee": int(1e18),
+            "platformFee": int(1e17),
             "minPeriod": 3 * 60,
             "maxPeriod": 4 * 60 * 60,
-            "max_trade_size": int(1000e6),
-            "max_market_oi": int(50000e6),
+            "max_trade_size": int(1000e18),
+            "max_market_oi": int(50000e18),
         },
         {
             "token1": "XAG",
@@ -149,15 +148,15 @@ def main():
             "full_name": "Silver",
             "asset_category": 2,
             "payout": 65,
-            "minFee": int(1e6),
-            "platformFee": int(1e5),
+            "minFee": int(1e18),
+            "platformFee": int(1e17),
             "minPeriod": 3 * 60,
             "maxPeriod": 4 * 60 * 60,
-            "max_trade_size": int(1000e6),
-            "max_market_oi": int(50000e6),
+            "max_trade_size": int(1000e18),
+            "max_market_oi": int(50000e18),
         },
     ]
-    initialLiquidityForTestnet = int(499999.786093e6)
+    initialLiquidityForTestnet = int(499999.786093e18)
     if network.show_active() == "development":
         allow_revert = True
         pool_admin = accounts.add()
@@ -192,17 +191,17 @@ def main():
         decimals = 6
         is_testnet_token = True
         nft_base_contract_address = ""
-        # pool_oi_storage = "0x69fEC5e3500F161739c428355caeFa09Cf13f4Ae"
-        # pool_oi_config = "0x9b308eabe572D5c9132B035476E2ecD5802319ac"
-        # account_registrar_address = "0xF93545296A467C50d05eC1A4F356A3415dc20268"
-        booster = "0xC5BD9D355919AC013c37C9bA2F669D9910fa30B5"
+        pool_oi_storage = ""
+        pool_oi_config = ""
+        account_registrar_address = "0xe3B182017Ed77b90e8bE452E520AA445C0F30825"
+        booster = "0x58E66d360d65Da8d7907768f826D86F411d0f849"
         nft_contract_address = "0xf494F435cb2068559406C77b7271DD7d6aF5B860"
-        # token_contract_address = "0x50E345c95a3c1E5085AE886FF4AF05Efa2403c90"
-        # pool_address = "0x55Ded741F9c097A95F117a08334D1fBb70A5B05D"
-        # router_contract_address = "0x8Fd65D9c94c1cA9ffE48D412Fc2637Ae0176BB03"
+        # token_contract_address = "0x74409f389Bb05B6966761D86A96F109b309a3CeF"
+        # pool_address = "0xe4a58950CA783b4106e8962C2350426AbBFA54D3"
+        router_contract_address = "0xfDdE951a9d75a80b8965f9D8639aEC5ee9Cd20cD"
         referral_storage_address = "0x7Fd89bE6309Dcb7E147D172E73F04b52cee6313a"
         # option_reader_address = "0x2C1D6877f6C9B31124D803c5Aa9D0518313A042A"
-        # faucet_address = "0x8097Fecbb9081191A81DE5295d1D68344EA783fF"
+        # faucet_address = "0x60e11702FAFBDd0d755d680B11fC28392F9796A5"
         creation_window_address = "0x72b9de12C4FBBAc17f3394F7EA3aDE315d83C7c1"
         # option_config_address = "0x5f207f0097a794faDD99024370e4D12616A277d1"
         # options_address = "0x68aA6D8e947993Ff2647Ad83ca51dc471478b610"  # ETH-BTC
@@ -248,16 +247,6 @@ def main():
     elif network.show_active() != mainnet:
         token_contract = FakeToken.at(token_contract_address)
 
-    ####### Deploy Creation window #######
-    if not creation_window_address:
-        creation_window = deploy_contract(
-            admin,
-            network,
-            CreationWindow,
-            [1682269200, 1682701200],
-        )
-        creation_window_address = creation_window.address
-
     ####### Deploy Registrar #######
     if not account_registrar_address:
         account_registrar = deploy_contract(
@@ -269,38 +258,6 @@ def main():
         account_registrar_address = account_registrar.address
     else:
         account_registrar = AccountRegistrar.at(account_registrar_address)
-
-    ####### Deploy Booster #######
-    if not booster:
-        booster = deploy_contract(
-            admin,
-            network,
-            Booster,
-            [nft_contract_address],
-        )
-        transact(
-            booster.address,
-            booster.abi,
-            "setConfigure",
-            [20, 40, 60, 80],
-            sender=admin,
-        )
-        transact(
-            booster.address,
-            booster.abi,
-            "setPrice",
-            int(1e6),
-            sender=admin,
-        )
-        transact(
-            booster.address,
-            booster.abi,
-            "setBoostPercentage",
-            100,
-            sender=admin,
-        )
-        booster = booster.address
-
     if not pool_oi_storage:
         pool_oi_storage = deploy_contract(admin, network, PoolOIStorage, [])
     else:
@@ -315,60 +272,29 @@ def main():
 
     ########### Router ###########
 
-    if not router_contract_address:
-        router_contract = deploy_contract(
-            admin,
-            network,
-            BufferRouter,
-            [publisher, sf_publisher, admin, account_registrar.address],
-        )
-        router_contract_address = router_contract.address
-
-        # router_contract_address = "0xB1be98504D40d3644ef069A2543536a8Eb11dD87"
-        # router_contract = BufferRouter.at(router_contract_address)
-
+    router_contract = BufferRouter.at(router_contract_address)
+    if is_testnet_token:
         transact(
-            router_contract.address,
-            router_contract.abi,
-            "setKeeper",
-            open_keeper,
-            True,
+            token_contract.address,
+            token_contract.abi,
+            "approveAddress",
+            router_contract_address,
             sender=admin,
         )
         transact(
-            router_contract.address,
-            router_contract.abi,
-            "setKeeper",
-            close_keeper,
-            True,
+            token_contract.address,
+            token_contract.abi,
+            "approveAddress",
+            admin.address,
             sender=admin,
         )
-        if is_testnet_token:
-            transact(
-                token_contract.address,
-                token_contract.abi,
-                "approveAddress",
-                router_contract_address,
-                sender=admin,
-            )
-            transact(
-                token_contract.address,
-                token_contract.abi,
-                "approveAddress",
-                admin.address,
-                sender=admin,
-            )
-            transact(
-                token_contract.address,
-                token_contract.abi,
-                "approveAddress",
-                sfd,
-                sender=admin,
-            )
-            # save_flat(BufferRouter, "BufferRouter")
-
-    else:
-        router_contract = BufferRouter.at(router_contract_address)
+        transact(
+            token_contract.address,
+            token_contract.abi,
+            "approveAddress",
+            sfd,
+            sender=admin,
+        )
 
     ########### Get pool ###########
 
@@ -406,26 +332,6 @@ def main():
                 0,
                 sender=admin,
             )
-
-    # transact(
-    #     pool.address,
-    #     pool.abi,
-    #     "setMaxLiquidity",
-    #     maxLiquidity,
-    #     sender=pool_admin,
-    # )
-
-    ########### Get NFT ###########
-    if not nft_contract_address:
-        nft_contract = deploy_contract(
-            nft_deployer,
-            network,
-            TraderNFT,
-            [nft_base_contract_address],
-        )
-        nft_contract_address = nft_contract.address
-    # else:
-    #     nft_contract = TraderNFT.at(nft_contract_address)
 
     all_options = []
     all_configs = []
@@ -469,22 +375,6 @@ def main():
                     sender=admin,
                 )
 
-        ########### Deploy referral storage ###########
-
-        if referral_storage_address:
-            referral_storage = ReferralStorage.at(referral_storage_address)
-        else:
-            referral_storage = deploy_contract(admin, network, ReferralStorage, [])
-            referral_storage_address = referral_storage.address
-            transact(
-                referral_storage.address,
-                referral_storage.abi,
-                "setConfigure",
-                referrerTierStep,
-                referrerTierDiscount,
-                sender=admin,
-            )
-
         ########### Deploy Options ###########
         if options_address:
             options = BufferBinaryOptions.at(options_address)
@@ -523,14 +413,6 @@ def main():
                 network,
                 Faucet,
                 [token_contract_address, admin.address, 1683475200],
-            )
-            transact(
-                token_contract.address,
-                token_contract.abi,
-                "transfer",
-                faucet.address,
-                int(1e12),
-                sender=admin,
             )
 
             if is_testnet_token:
@@ -657,17 +539,6 @@ def main():
         all_options.append(options.address)
         all_configs.append(option_config.address)
         print(f"{Fore.YELLOW}Deployed {pair} at {options.address} {Style.RESET_ALL} ")
-        params = [
-            int(1e6),
-            900,
-            True,
-            options.address,
-            2922100000000,
-            50,
-            True,
-            "",
-            0,
-        ]
         transact(
             option_config.address,
             option_config.abi,
@@ -725,7 +596,6 @@ def main():
     all_contractss = {
         "pool": pool.address,
         "options": dict(zip(assets, option_data)),
-        "referral_storage": referral_storage.address,
         "meta": option_reader_address,
         "faucet": faucet.address if network.show_active() != mainnet else "",
         "router": router_contract.address,

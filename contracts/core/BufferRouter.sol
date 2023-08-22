@@ -22,7 +22,6 @@ contract BufferRouter is AccessControl, IBufferRouter {
     address public publisher;
     address public sfPublisher;
     address public admin;
-    bool public isInPrivateKeeperMode = true;
     IAccountRegistrar public accountRegistrar;
 
     mapping(uint256 => QueuedTrade) public queuedTrades;
@@ -65,10 +64,6 @@ contract BufferRouter is AccessControl, IBufferRouter {
         isKeeper[_keeper] = _isActive;
     }
 
-    function setInPrivateKeeperMode() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        isInPrivateKeeperMode = !isInPrivateKeeperMode;
-    }
-
     /************************************************
      *  KEEPER ONLY FUNCTIONS
      ***********************************************/
@@ -100,8 +95,50 @@ contract BufferRouter is AccessControl, IBufferRouter {
             emit FailResolve(queueId, "Router: Permit did not succeed");
             return false;
         }
-        emit ApproveRouter(user, nonceBefore, permit.value, permit.deadline);
+        emit ApproveRouter(
+            user,
+            nonceBefore,
+            permit.value,
+            permit.deadline,
+            tokenX
+        );
         return true;
+    }
+
+    function revokeApprovals(RevokeParams[] memory revokeParams) public {
+        for (uint256 index = 0; index < revokeParams.length; index++) {
+            RevokeParams memory params = revokeParams[index];
+            IERC20Permit token = IERC20Permit(params.tokenX);
+            uint256 nonceBefore = token.nonces(params.user);
+            try
+                token.permit(
+                    params.user,
+                    address(this),
+                    params.permit.value,
+                    params.permit.deadline,
+                    params.permit.v,
+                    params.permit.r,
+                    params.permit.s
+                )
+            {} catch Error(string memory reason) {
+                emit FailRevoke(params.user, params.tokenX, reason);
+            }
+            uint256 nonceAfter = token.nonces(params.user);
+            if (nonceAfter != nonceBefore + 1) {
+                emit FailRevoke(
+                    params.user,
+                    params.tokenX,
+                    "Router: Permit did not succeed"
+                );
+            }
+            emit RevokeRouter(
+                params.user,
+                nonceBefore,
+                params.permit.value,
+                params.permit.deadline,
+                params.tokenX
+            );
+        }
     }
 
     function openTrades(OpenTxn[] calldata params) external {
@@ -142,11 +179,19 @@ contract BufferRouter is AccessControl, IBufferRouter {
                 if (!success) continue;
             }
             if (params[index].register.shouldRegister) {
-                accountRegistrar.registerAccount(
-                    params[index].register.oneCT,
-                    user,
-                    params[index].register.signature
-                );
+                try
+                    accountRegistrar.registerAccount(
+                        params[index].register.oneCT,
+                        user,
+                        params[index].register.signature
+                    )
+                {} catch Error(string memory reason) {
+                    emit FailResolve(
+                        currentParams.queueId,
+                        "Router: Registration failed"
+                    );
+                    continue;
+                }
             }
 
             (address signer, uint256 nonce) = getAccountMapping(user);
@@ -178,9 +223,26 @@ contract BufferRouter is AccessControl, IBufferRouter {
             IBufferRouter.SignInfo memory publisherSignInfo = params
                 .publisherSignInfo;
             QueuedTrade memory queuedTrade = queuedTrades[optionInfo.queueId];
+            address owner = optionsContract.ownerOf(params.optionId);
             (, , , , , , , uint256 createdAt) = optionsContract.options(
                 params.optionId
             );
+            if (closeParam.register.shouldRegister) {
+                try
+                    accountRegistrar.registerAccount(
+                        closeParam.register.oneCT,
+                        owner,
+                        closeParam.register.signature
+                    )
+                {} catch Error(string memory reason) {
+                    emit FailUnlock(
+                        params.optionId,
+                        params.targetContract,
+                        reason
+                    );
+                    continue;
+                }
+            }
             if (
                 !queuedTrade.isEarlyCloseAllowed ||
                 (block.timestamp - createdAt <
@@ -347,10 +409,7 @@ contract BufferRouter is AccessControl, IBufferRouter {
      *  INTERNAL FUNCTIONS
      ***********************************************/
     function _validateKeeper() private view {
-        require(
-            !isInPrivateKeeperMode || isKeeper[msg.sender],
-            "Keeper: forbidden"
-        );
+        require(isKeeper[msg.sender], "Keeper: forbidden");
     }
 
     function getAccountMapping(

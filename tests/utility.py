@@ -109,7 +109,13 @@ class BinaryOptionTesting(object):
         self.binary_pool.provide(self.liquidity, 0, {"from": self.owner})
         self.router.setContractRegistry(self.binary_options.address, True)
         self.router.setContractRegistry(self.binary_options_2.address, True)
-        self.router.setInPrivateKeeperMode() if self.router.isInPrivateKeeperMode() else None
+        self.router.setKeeper(self.bot, True, {"from": self.owner})
+        ADMIN_ROLE = self.registrar.ADMIN_ROLE()
+        self.registrar.grantRole(
+            ADMIN_ROLE,
+            self.accounts[0],
+            {"from": self.accounts[0]},
+        )
 
     def time_travel(self, day_of_week, hour, to_minute):
         # Get the current block timestamp
@@ -475,7 +481,7 @@ class BinaryOptionTesting(object):
         s = self.enc(msgParams, key)
         return s
 
-    def get_permit(self, allowance, deadline, user):
+    def get_permit(self, allowance, deadline, user, spender=None):
         web3 = brownie.network.web3
         key = user.private_key
         domain = {
@@ -500,7 +506,7 @@ class BinaryOptionTesting(object):
             "domain": domain,
             "message": {
                 "owner": user.address,
-                "spender": self.router.address,
+                "spender": spender or self.router.address,
                 "value": allowance,
                 "nonce": self.tokenX.nonces(user.address),
                 "deadline": deadline,
@@ -511,13 +517,6 @@ class BinaryOptionTesting(object):
         return sig.v, sig.r, sig.s
 
     def reregister(self, user, one_ct):
-        ADMIN_ROLE = self.registrar.ADMIN_ROLE()
-        self.registrar.grantRole(
-            ADMIN_ROLE,
-            self.accounts[0],
-            {"from": self.accounts[0]},
-        )
-
         nonce = self.registrar.accountMapping(user.address)[1]
         self.registrar.deregisterAccount(
             user.address, self.get_deregister_signature(user), {"from": self.owner}

@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 
-contract FakeUSDC is
+contract FakeToken is
     ERC20("USDC", "USDC"),
     ERC20Permit("Token"),
     AccessControl
