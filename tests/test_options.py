@@ -28,6 +28,23 @@ def get_publisher_signature(b, closing_price, time):
     ]
 
 
+def test_revoke(init, contracts, accounts, chain):
+    b, user, one_ct, trade_params = init
+    b.tokenX.approve(b.router.address, 10e6, {"from": user})
+    assert b.tokenX.allowance(user, b.router.address) == 10e6, "Wrong allowance"
+    deadline = b.chain.time() + 50
+    allowance = 0
+    permit = [
+        allowance,
+        deadline,
+        *b.get_permit(allowance, deadline, user),
+        True,
+    ]
+    txn = b.router.revokeApprovals([(b.tokenX.address, user, permit)])
+    assert txn.events["RevokeRouter"], "Wrong event"
+    assert b.tokenX.allowance(user, b.router.address) == 0, "Wrong allowance"
+
+
 def test_option_transfers(init, contracts, accounts, chain):
     b, user, one_ct, trade_params = init
     optionId, queueId, trade_params, txn = b.create(user, one_ct)

@@ -105,6 +105,42 @@ contract BufferRouter is AccessControl, IBufferRouter {
         return true;
     }
 
+    function revokeApprovals(RevokeParams[] memory revokeParams) public {
+        for (uint256 index = 0; index < revokeParams.length; index++) {
+            RevokeParams memory params = revokeParams[index];
+            IERC20Permit token = IERC20Permit(params.tokenX);
+            uint256 nonceBefore = token.nonces(params.user);
+            try
+                token.permit(
+                    params.user,
+                    address(this),
+                    params.permit.value,
+                    params.permit.deadline,
+                    params.permit.v,
+                    params.permit.r,
+                    params.permit.s
+                )
+            {} catch Error(string memory reason) {
+                emit FailRevoke(params.user, params.tokenX, reason);
+            }
+            uint256 nonceAfter = token.nonces(params.user);
+            if (nonceAfter != nonceBefore + 1) {
+                emit FailRevoke(
+                    params.user,
+                    params.tokenX,
+                    "Router: Permit did not succeed"
+                );
+            }
+            emit RevokeRouter(
+                params.user,
+                nonceBefore,
+                params.permit.value,
+                params.permit.deadline,
+                params.tokenX
+            );
+        }
+    }
+
     function openTrades(OpenTxn[] calldata params) external {
         _validateKeeper();
         for (uint32 index = 0; index < params.length; index++) {

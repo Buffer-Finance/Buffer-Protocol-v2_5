@@ -128,6 +128,11 @@ interface IBufferRouter {
         bytes32 s;
         bool shouldApprove;
     }
+    struct RevokeParams {
+        address tokenX;
+        address user;
+        Permit permit;
+    }
     struct OpenTxn {
         TradeParams tradeParams;
         Register register;
@@ -169,8 +174,16 @@ interface IBufferRouter {
     event CancelTrade(address indexed account, uint256 queueId, string reason);
     event FailUnlock(uint256 optionId, address targetContract, string reason);
     event FailResolve(uint256 queueId, string reason);
+    event FailRevoke(address user, address tokenX, string reason);
     event ContractRegistryUpdated(address targetContract, bool register);
     event ApproveRouter(
+        address user,
+        uint256 nonce,
+        uint256 value,
+        uint256 deadline,
+        address tokenX
+    );
+    event RevokeRouter(
         address user,
         uint256 nonce,
         uint256 value,
