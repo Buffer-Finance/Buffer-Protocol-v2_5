@@ -27,17 +27,17 @@ Deployment Chain(s)
 
 |  Identifier  | Title                        | Severity      | Mitigated |
 | ------ | ---------------------------- | ------------- | ----- |
-| [H-01] | Payments for coupons to Booster are irretrievable | High | [x] |
-| [H-02] | BufferBinaryPool can permanently lock funds on early exercise | High | [x] |
-| [H-03] | Market direction signature can be abused if privateKeeperMode is disabled | High | [x] |
-| [H-04] | closeAnytime timestamp is never validated against current timestamp | High | [x] |
-| [H-05] | closeAnyTime timestamp is never validated against pricing timestamp | High | [x] |
-| [M-01] | booster#buy fails to apply discount | Medium | [x] |
-| [M-02] | Transferred options can only be closed early by previous owner | Medium | [x] |
-| [L-01] | Users can buy coupons for options that don't exist | Low | [x] |
-| [L-02] | registerAccount sub-call in BufferRouter#openTrades can revert entire transaction | Low | [x] |
-| [I-01] | Booster#buy should support buying multiple boosts at a time | Info | [x] |
-| [I-02] | OptionMath#_decay is never used | Info | [x] |
+| [H-01] | Payments for coupons to Booster are irretrievable | High | ✔️ |
+| [H-02] | BufferBinaryPool can permanently lock funds on early exercise | High | ✔️ |
+| [H-03] | Market direction signature can be abused if privateKeeperMode is disabled | High | ✔️ |
+| [H-04] | closeAnytime timestamp is never validated against current timestamp | High | ✔️ |
+| [H-05] | closeAnyTime timestamp is never validated against pricing timestamp | High | ✔️ |
+| [M-01] | booster#buy fails to apply discount | Medium | ✔️ |
+| [M-02] | Transferred options can only be closed early by previous owner | Medium | ✔️ |
+| [L-01] | Users can buy coupons for options that don't exist | Low | ✔️ |
+| [L-02] | registerAccount sub-call in BufferRouter#openTrades can revert entire transaction | Low | ✔️ |
+| [I-01] | Booster#buy should support buying multiple boosts at a time | Info | ✔️ |
+| [I-02] | OptionMath#_decay is never used | Info | ✔️ |
 
 
 ## [H-01] Payments for coupons to Booster are irretrievable
