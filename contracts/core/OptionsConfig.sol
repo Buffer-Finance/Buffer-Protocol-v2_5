@@ -22,7 +22,7 @@ contract OptionsConfig is Ownable, IOptionsConfig {
     address public override boosterContract;
     uint32 public override maxPeriod = 24 hours;
     uint32 public override minPeriod = 3 minutes;
-    uint32 public override earlyCloseThreshold = 5 minutes;
+    uint32 public override earlyCloseThreshold = 1 minutes;
 
     uint256 public override minFee = 1e6;
     uint256 public override iv;

@@ -82,78 +82,84 @@ def main():
             "token2": "USD",
             "full_name": "Bitcoin",
             "asset_category": 1,
-            "payout": 65,
             "minFee": int(1e18),
             "platformFee": int(1e17),
             "minPeriod": 3 * 60,
             "maxPeriod": 4 * 60 * 60,
             "max_trade_size": int(1000e18),
             "max_market_oi": int(50000e18),
+            "is_early_close_allowed": True,
+            "early_close_threshold": 60,
         },
         {
             "token1": "ETH",
             "token2": "USD",
             "full_name": "Ethereum",
             "asset_category": 1,
-            "payout": 65,
             "minFee": int(1e18),
             "platformFee": int(1e17),
             "minPeriod": 3 * 60,
             "maxPeriod": 4 * 60 * 60,
             "max_trade_size": int(1000e18),
             "max_market_oi": int(50000e18),
+            "is_early_close_allowed": True,
+            "early_close_threshold": 60,
         },
         {
             "token1": "EUR",
             "token2": "USD",
             "full_name": "Euro",
             "asset_category": 0,
-            "payout": 65,
             "minFee": int(1e18),
             "platformFee": int(1e17),
             "minPeriod": 3 * 60,
             "maxPeriod": 4 * 60 * 60,
             "max_trade_size": int(1000e18),
             "max_market_oi": int(50000e18),
+            "is_early_close_allowed": True,
+            "early_close_threshold": 60,
         },
         {
             "token1": "GBP",
             "token2": "USD",
             "full_name": "Pound",
             "asset_category": 0,
-            "payout": 65,
             "minFee": int(1e18),
             "platformFee": int(1e17),
             "minPeriod": 3 * 60,
             "maxPeriod": 4 * 60 * 60,
             "max_trade_size": int(1000e18),
             "max_market_oi": int(50000e18),
+            "is_early_close_allowed": True,
+            "early_close_threshold": 60,
         },
         {
             "token1": "XAU",
             "token2": "USD",
             "full_name": "Gold",
             "asset_category": 2,
-            "payout": 65,
             "minFee": int(1e18),
             "platformFee": int(1e17),
             "minPeriod": 3 * 60,
             "maxPeriod": 4 * 60 * 60,
             "max_trade_size": int(1000e18),
             "max_market_oi": int(50000e18),
+            "is_early_close_allowed": True,
+            "early_close_threshold": 60,
         },
         {
             "token1": "XAG",
             "token2": "USD",
             "full_name": "Silver",
             "asset_category": 2,
-            "payout": 65,
             "minFee": int(1e18),
             "platformFee": int(1e17),
             "minPeriod": 3 * 60,
             "maxPeriod": 4 * 60 * 60,
             "max_trade_size": int(1000e18),
             "max_market_oi": int(50000e18),
+            "is_early_close_allowed": True,
+            "early_close_threshold": 60,
         },
     ]
     initialLiquidityForTestnet = int(499999.786093e18)
@@ -193,12 +199,12 @@ def main():
         nft_base_contract_address = ""
         pool_oi_storage = ""
         pool_oi_config = ""
-        account_registrar_address = "0xe3B182017Ed77b90e8bE452E520AA445C0F30825"
-        booster = "0x58E66d360d65Da8d7907768f826D86F411d0f849"
+        account_registrar_address = "0x5b14e54e6F1783A76F3ec55d2cc8A3b0b169e2Dd"
+        booster = "0x374E20a66836fC3A0357cC6ecD5B12686f81Db84"
         nft_contract_address = "0xf494F435cb2068559406C77b7271DD7d6aF5B860"
         # token_contract_address = "0x74409f389Bb05B6966761D86A96F109b309a3CeF"
         # pool_address = "0xe4a58950CA783b4106e8962C2350426AbBFA54D3"
-        router_contract_address = "0xfDdE951a9d75a80b8965f9D8639aEC5ee9Cd20cD"
+        router_contract_address = "0xEdEf72afc395582f68e623b4D36f92fC990f0CA9"
         referral_storage_address = "0x7Fd89bE6309Dcb7E147D172E73F04b52cee6313a"
         # option_reader_address = "0x2C1D6877f6C9B31124D803c5Aa9D0518313A042A"
         # faucet_address = "0x60e11702FAFBDd0d755d680B11fC28392F9796A5"
@@ -567,26 +573,21 @@ def main():
             asset_pair["maxPeriod"],
             sender=admin,
         )
-        transact(
-            option_config.address,
-            option_config.abi,
-            "setIV",
-            11000,
-            sender=admin,
-        )
-        transact(
-            option_config.address,
-            option_config.abi,
-            "toggleEarlyClose",
-            sender=admin,
-        )
-        transact(
-            option_config.address,
-            option_config.abi,
-            "setEarlyCloseThreshold",
-            60,
-            sender=admin,
-        )
+        if asset_pair["is_early_close_allowed"]:
+            transact(
+                option_config.address,
+                option_config.abi,
+                "toggleEarlyClose",
+                sender=admin,
+            )
+            if asset_pair["early_close_threshold"] != 60:
+                transact(
+                    option_config.address,
+                    option_config.abi,
+                    "setEarlyCloseThreshold",
+                    asset_pair["early_close_threshold"],
+                    sender=admin,
+                )
 
     option_data = []
     assets = [x["token1"] + x["token2"] for x in asset_pairs]
