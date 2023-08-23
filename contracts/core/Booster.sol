@@ -16,7 +16,7 @@ contract Booster is Ownable, IBooster, AccessControl {
     using SafeERC20 for ERC20;
 
     ITraderNFT nftContract;
-    uint16 public MAX_TRADES_PER_BOOST = 2;
+    uint16 public MAX_TRADES_PER_BOOST = 0;
     uint256 public couponPrice;
     uint256 public boostPercentage;
     bytes32 public constant OPTION_ISSUER_ROLE =

@@ -67,94 +67,90 @@ def main():
     pool_oi_storage = None
     pool_oi_config = None
 
-    market_times = [
-        (17, 0, 23, 59),
-        (0, 0, 23, 59),
-        (0, 0, 23, 59),
-        (0, 0, 23, 59),
-        (0, 0, 23, 59),
-        (0, 0, 15, 59),
-        (0, 0, 0, 0),
-    ]
-
     asset_pairs = [
         {
             "token1": "BTC",
             "token2": "USD",
             "full_name": "Bitcoin",
             "asset_category": 1,
-            "payout": 65,
             "minFee": int(1e6),
             "platformFee": int(1e5),
             "minPeriod": 3 * 60,
             "maxPeriod": 4 * 60 * 60,
             "max_trade_size": int(1000e6),
             "max_market_oi": int(50000e6),
+            "is_early_close_allowed": True,
+            "early_close_threshold": 60,
         },
         {
             "token1": "ETH",
             "token2": "USD",
             "full_name": "Ethereum",
             "asset_category": 1,
-            "payout": 65,
             "minFee": int(1e6),
             "platformFee": int(1e5),
             "minPeriod": 3 * 60,
             "maxPeriod": 4 * 60 * 60,
             "max_trade_size": int(1000e6),
             "max_market_oi": int(50000e6),
+            "is_early_close_allowed": True,
+            "early_close_threshold": 60,
         },
         {
             "token1": "EUR",
             "token2": "USD",
             "full_name": "Euro",
             "asset_category": 0,
-            "payout": 65,
             "minFee": int(1e6),
             "platformFee": int(1e5),
             "minPeriod": 3 * 60,
             "maxPeriod": 4 * 60 * 60,
             "max_trade_size": int(1000e6),
             "max_market_oi": int(50000e6),
+            "is_early_close_allowed": True,
+            "early_close_threshold": 60,
         },
         {
             "token1": "GBP",
             "token2": "USD",
             "full_name": "Pound",
             "asset_category": 0,
-            "payout": 65,
             "minFee": int(1e6),
             "platformFee": int(1e5),
             "minPeriod": 3 * 60,
             "maxPeriod": 4 * 60 * 60,
             "max_trade_size": int(1000e6),
             "max_market_oi": int(50000e6),
+            "is_early_close_allowed": True,
+            "early_close_threshold": 60,
         },
         {
             "token1": "XAU",
             "token2": "USD",
             "full_name": "Gold",
             "asset_category": 2,
-            "payout": 65,
             "minFee": int(1e6),
             "platformFee": int(1e5),
             "minPeriod": 3 * 60,
             "maxPeriod": 4 * 60 * 60,
             "max_trade_size": int(1000e6),
             "max_market_oi": int(50000e6),
+            "is_early_close_allowed": True,
+            "early_close_threshold": 60,
         },
         {
             "token1": "XAG",
             "token2": "USD",
             "full_name": "Silver",
             "asset_category": 2,
-            "payout": 65,
             "minFee": int(1e6),
             "platformFee": int(1e5),
             "minPeriod": 3 * 60,
             "maxPeriod": 4 * 60 * 60,
             "max_trade_size": int(1000e6),
             "max_market_oi": int(50000e6),
+            "is_early_close_allowed": True,
+            "early_close_threshold": 60,
         },
     ]
     initialLiquidityForTestnet = int(499999.786093e6)
@@ -188,6 +184,8 @@ def main():
         sf_publisher = "0xFbEA9559AE33214a080c03c68EcF1D3AF0f58A7D"
         open_keeper = "0x11E7d4D9a78DF6A70D45CFEc6002bA18868b93eB"
         close_keeper = "0x9CDAA8483c75D332796448f0a3062c45151Bc1AC"
+        revoke_keeper = ""
+        early_close_keeper = ""
         sfd = "0x32A49a15F8eE598C1EeDc21138DEb23b391f425b"
         decimals = 6
         is_testnet_token = True
@@ -195,7 +193,7 @@ def main():
         # pool_oi_storage = "0x69fEC5e3500F161739c428355caeFa09Cf13f4Ae"
         # pool_oi_config = "0x9b308eabe572D5c9132B035476E2ecD5802319ac"
         # account_registrar_address = "0xF93545296A467C50d05eC1A4F356A3415dc20268"
-        booster = "0xC5BD9D355919AC013c37C9bA2F669D9910fa30B5"
+        booster = "0x374E20a66836fC3A0357cC6ecD5B12686f81Db84"
         nft_contract_address = "0xf494F435cb2068559406C77b7271DD7d6aF5B860"
         # token_contract_address = "0x50E345c95a3c1E5085AE886FF4AF05Efa2403c90"
         # pool_address = "0x55Ded741F9c097A95F117a08334D1fBb70A5B05D"
@@ -216,6 +214,8 @@ def main():
 
         open_keeper = "0x1A5A1e1683F304500AC03b0FA14Eb5987f6734d6"
         close_keeper = "0xc660D7126cA88bef96e65373B3d10368Cb683B46"
+        revoke_keeper = ""
+        early_close_keeper = ""
 
         # print("Funding the keepers")
         # admin.transfer(open_keeper, "0.4 ether")
@@ -271,7 +271,7 @@ def main():
         account_registrar = AccountRegistrar.at(account_registrar_address)
 
     ####### Deploy Booster #######
-    if not booster:
+    if not booster and network.show_active() != mainnet:
         booster = deploy_contract(
             admin,
             network,
@@ -327,22 +327,15 @@ def main():
         # router_contract_address = "0xB1be98504D40d3644ef069A2543536a8Eb11dD87"
         # router_contract = BufferRouter.at(router_contract_address)
 
-        transact(
-            router_contract.address,
-            router_contract.abi,
-            "setKeeper",
-            open_keeper,
-            True,
-            sender=admin,
-        )
-        transact(
-            router_contract.address,
-            router_contract.abi,
-            "setKeeper",
-            close_keeper,
-            True,
-            sender=admin,
-        )
+        for keeper in [open_keeper, close_keeper, revoke_keeper, early_close_keeper]:
+            transact(
+                router_contract.address,
+                router_contract.abi,
+                "setKeeper",
+                keeper,
+                True,
+                sender=admin,
+            )
         if is_testnet_token:
             transact(
                 token_contract.address,
@@ -657,17 +650,7 @@ def main():
         all_options.append(options.address)
         all_configs.append(option_config.address)
         print(f"{Fore.YELLOW}Deployed {pair} at {options.address} {Style.RESET_ALL} ")
-        params = [
-            int(1e6),
-            900,
-            True,
-            options.address,
-            2922100000000,
-            50,
-            True,
-            "",
-            0,
-        ]
+
         transact(
             option_config.address,
             option_config.abi,
@@ -696,26 +679,21 @@ def main():
             asset_pair["maxPeriod"],
             sender=admin,
         )
-        transact(
-            option_config.address,
-            option_config.abi,
-            "setIV",
-            11000,
-            sender=admin,
-        )
-        transact(
-            option_config.address,
-            option_config.abi,
-            "toggleEarlyClose",
-            sender=admin,
-        )
-        transact(
-            option_config.address,
-            option_config.abi,
-            "setEarlyCloseThreshold",
-            60,
-            sender=admin,
-        )
+        if asset_pair["is_early_close_allowed"]:
+            transact(
+                option_config.address,
+                option_config.abi,
+                "toggleEarlyClose",
+                sender=admin,
+            )
+            if asset_pair["early_close_threshold"] != 60:
+                transact(
+                    option_config.address,
+                    option_config.abi,
+                    "setEarlyCloseThreshold",
+                    asset_pair["early_close_threshold"],
+                    sender=admin,
+                )
 
     option_data = []
     assets = [x["token1"] + x["token2"] for x in asset_pairs]
