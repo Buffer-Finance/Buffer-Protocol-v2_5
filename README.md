@@ -1,3 +1,4 @@
+
 # Buffer v2.5 Audit Report
 
 ### Reviewed by: 0x52 (@IAm0x52)
@@ -9,43 +10,39 @@
 The [Buffer V2.5](https://github.com/Buffer-Finance/Buffer-Protocol-v2_5/) repo was reviewed at hash [84b6060b44](https://github.com/Buffer-Finance/Buffer-Protocol-v2_5/blob/84b6060b4447b2550de595202e8820c7f515988b)
 
 In-Scope Contracts
-
--   contracts/core/AccountRegistrar.sol
--   contracts/core/Booster.sol
--   contracts/core/BufferBinaryOptions.sol
--   contracts/core/BufferBinaryPool.sol
--   contracts/core/BufferRouter.sol
--   contracts/core/CreationWindow.sol
--   contracts/core/OptionMath.sol
--   contracts/core/OptionConfig.sol
--   contracts/core/Validator.sol
+- contracts/core/AccountRegistrar.sol
+- contracts/core/Booster.sol
+- contracts/core/BufferBinaryOptions.sol
+- contracts/core/BufferBinaryPool.sol
+- contracts/core/BufferRouter.sol
+- contracts/core/CreationWindow.sol
+- contracts/core/OptionMath.sol
+- contracts/core/OptionConfig.sol
+- contracts/core/Validator.sol
 
 Deployment Chain(s)
-
--   Arbitrum One Mainnet
+- Arbitrum One Mainnet
 
 # Summary of Findings
 
-| Identifier | Title                                                                             | Severity | Fixed |
-| ---------- | --------------------------------------------------------------------------------- | -------- | ----- |
-| [H-01]     | Payments for coupons to Booster are irretrievable                                 | High     | F     |
-| [H-02]     | BufferBinaryPool can permanently lock funds on early exercise                     | High     | F     |
-| [H-03]     | Market direction signature can be abused if privateKeeperMode is disabled         | High     | F     |
-| [H-04]     | closeAnytime timestamp is never validated against current timestamp               | High     | X     |
-| [H-05]     | closeAnyTime timestamp is never validated against pricing timestamp               | High     | X     |
-| [H-06]     | Settlement fee isn't applied correctly in BufferBinaryOptions#createFromRouter    | High     | X     |
-| [M-01]     | booster#buy fails to apply discount                                               | Medium   | F     |
-| [M-02]     | Transferred options can only be closed early by previous owner                    | Medium   | F     |
-| [M-03]     | Platform fee is methodology is incompatible with the use of multiple vaults       | Medium   | X     |
-| [L-01]     | Users can buy coupons for options that don't exist                                | Low      | X     |
-| [L-02]     | Using a single IV value is restrictive and can unfairly price option payouts      | Low      | X     |
-| [L-03]     | registerAccount sub-call in BufferRouter#openTrades can revert entire transaction | Low      | F     |
-| [I-01]     | Booster#buy should support buying multiple boosts at a time                       | Info     | F     |
-| [I-02]     | OptionMath#\_decay is never used                                                  | Info     | F     |
+|  Identifier  | Title                        | Severity      | Mitigated |
+| ------ | ---------------------------- | ------------- | ----- |
+| [H-01] | Payments for coupons to Booster are irretrievable | High | ✔️ |
+| [H-02] | BufferBinaryPool can permanently lock funds on early exercise | High | ✔️ |
+| [H-03] | Market direction signature can be abused if privateKeeperMode is disabled | High | ✔️ |
+| [H-04] | closeAnytime timestamp is never validated against current timestamp | High | ✔️ |
+| [H-05] | closeAnyTime timestamp is never validated against pricing timestamp | High | ✔️ |
+| [M-01] | booster#buy fails to apply discount | Medium | ✔️ |
+| [M-02] | Transferred options can only be closed early by previous owner | Medium | ✔️ |
+| [L-01] | Users can buy coupons for options that don't exist | Low | ✔️ |
+| [L-02] | registerAccount sub-call in BufferRouter#openTrades can revert entire transaction | Low | ✔️ |
+| [I-01] | Booster#buy should support buying multiple boosts at a time | Info | ✔️ |
+| [I-02] | OptionMath#_decay is never used | Info | ✔️ |
+
 
 ## [H-01] Payments for coupons to Booster are irretrievable
 
-### Details
+### Details 
 
 [Booster.sol#L92-L99](https://github.com/Buffer-Finance/Buffer-Protocol-v2_5/blob/84b6060b4447b2550de595202e8820c7f515988b/contracts/core/Booster.sol#L92-L99)
 
@@ -70,9 +67,13 @@ Booster#buy transfers tokens to itself but has no way to recover these tokens, c
 
 Transfer fees to a configurable address such as admin
 
+### Remediation
+
+Mitigated [here](https://github.com/Buffer-Finance/Buffer-Protocol-v2_5/pull/8) by sending fees to admin rather than the booster contract
+
 ## [H-02] BufferBinaryPool can permanently lock funds on early exercise
 
-### Details
+### Details 
 
 [BufferBinaryOptions.sol#L380-L395](https://github.com/Buffer-Finance/Buffer-Protocol-v2_5/blob/84b6060b4447b2550de595202e8820c7f515988b/contracts/core/BufferBinaryOptions.sol#L380-L395)
 
@@ -120,9 +121,13 @@ A user opens an option that locks 100 USDC. After some time they decide to exerc
 
 BufferBinaryPool#send should always unlock the entire option amount not just the amount sent.
 
+### Remediation
+
+Mitigated [here](https://github.com/Buffer-Finance/Buffer-Protocol-v2_5/pull/7). Upon exercise `option.lockedAmount` is redeemed to the option contract. `profit` is sent to the user and the remainder (if any) is sent back to the pool.
+
 ## [H-03] Market direction signature can be abused if privateKeeperMode is disabled
 
-### Details
+### Details 
 
 https://github.com/Buffer-Finance/Buffer-Protocol-v2_5/blob/84b6060b4447b2550de595202e8820c7f515988b/contracts/core/BufferRouter.sol#L233-L246
 
@@ -143,8 +148,8 @@ https://github.com/Buffer-Finance/Buffer-Protocol-v2_5/blob/84b6060b4447b2550de5
 
 When options are exercised, the market direction is revealed via a signature provided by the opener. This can cause 2 significant issues if privateKeeperMode is disabled:
 
-1. User can change the direction of their trade after to guarantee they win
-2. User can open trade and withhold direction signature to indefinitely lock LP funds
+1) User can change the direction of their trade after to guarantee they win
+2) User can open trade and withhold direction signature to indefinitely lock LP funds
 
 ### Lines of Code
 
@@ -156,9 +161,13 @@ When options are exercised, the market direction is revealed via a signature pro
 
 Instead of using a signature at exercise, consider instead concatenating the direction with a salt then hashing storing that hash with the queued trade. Upon closure the salt and direction can be provided and the hash checked against the stored hash.
 
+### Remediation
+
+Mitigated [here](https://github.com/Buffer-Finance/Buffer-Protocol-v2_5/pull/4/) by removing the ability to disable privateKeeperMode
+
 ## [H-04] closeAnytime timestamp is never validated against current timestamp
 
-### Details
+### Details 
 
 [BufferRouter.sol#L248-L258](https://github.com/Buffer-Finance/Buffer-Protocol-v2_5/blob/84b6060b4447b2550de595202e8820c7f515988b/contracts/core/BufferRouter.sol#L248-L258)
 
@@ -184,9 +193,13 @@ When exercising early, the timestamp used for unlocking is extremely important. 
 
 Validate that exercise timestamp is within some margin of the current timestamp
 
+### Remediation
+
+Mitigated [here](https://github.com/Buffer-Finance/Buffer-Protocol-v2_5/pull/4/) by removing the ability to disable privateKeeperMode. This has only been addressed for non-trusted actors and can still be exploited by a malicious/compromised keeper
+
 ## [H-05] closeAnyTime timestamp is never validated against pricing timestamp
 
-### Details
+### Details 
 
 [BufferRouter.sol#L248-L258](https://github.com/Buffer-Finance/Buffer-Protocol-v2_5/blob/84b6060b4447b2550de595202e8820c7f515988b/contracts/core/BufferRouter.sol#L248-L258)
 
@@ -204,8 +217,8 @@ Validate that exercise timestamp is within some margin of the current timestamp
 
 When an option is exercised early, it uses the timestamp of the pricing data without ever checking the timestamp of the closeAnytime signature. This can lead to 2 potential issues:
 
-1. The user may receive less than expected due to the actual exercise timestamp being different than when they signed
-2. If private keeper mode is disabled then transactions may be intercepted and the signature used by someone else to close the position with a much different timestamp
+1) The user may receive less than expected due to the actual exercise timestamp being different than when they signed
+2) If private keeper mode is disabled then transactions may be intercepted and the signature used by someone else to close the position with a much different timestamp
 
 ### Lines of Code
 
@@ -215,59 +228,18 @@ When an option is exercised early, it uses the timestamp of the pricing data wit
 
 Pricing data timestamp and closeAnytime timestamp should be required to match
 
-## [H-06] Settlement fee isn't applied correctly in BufferBinaryOptions#createFromRouter
+### Remediation
 
-### Details
-
-[BufferBinaryOptions.sol#L119-L144](https://github.com/Buffer-Finance/Buffer-Protocol-v2_5/blob/84b6060b4447b2550de595202e8820c7f515988b/contracts/core/BufferBinaryOptions.sol#L119-L144)
-
-        Option memory option = Option(
-            State.Active,
-            optionParams.strike,
-            optionParams.amount,
-            optionParams.amount,
-            optionParams.amount / 2,
-            queuedTime + optionParams.period,
-            optionParams.totalFee,
-            queuedTime
-        );
-        optionID = _generateTokenId();
-        userOptionIds[optionParams.user].push(optionID);
-        options[optionID] = option;
-        _mint(optionParams.user, optionID);
-
-
-        uint256 referrerFee = _processReferralRebate(
-            optionParams.user,
-            optionParams.totalFee,
-            optionParams.amount,
-            optionParams.referralCode,
-            optionParams.baseSettlementFeePercentage
-        );
-
-
-        uint256 settlementFee = optionParams.totalFee -
-            option.premium -
-            referrerFee;
-
-Premium and settlementFee are still hardcoded as with the previous version instead of being dynamic as it is supposed to be. This leads to LPs or referrers receiving less than intended.
-
-### Lines of Code
-
-[BufferBinaryOptions.sol#L115-L174](https://github.com/Buffer-Finance/Buffer-Protocol-v2_5/blob/84b6060b4447b2550de595202e8820c7f515988b/contracts/core/BufferBinaryOptions.sol#L115-L174)
-
-### Recommendation
-
-Settlement fee should be applied dynamically instead of being hardcoded
+Mitigated [here](https://github.com/Buffer-Finance/Buffer-Protocol-v2_5/pull/4/) by removing the ability to disable privateKeeperMode. This has only been addressed for non-trusted actors and can still be exploited by a malicious/compromised keeper
 
 ## [M-01] booster#buy fails to apply discount
 
-### Details
+### Details 
 
 [Booster.sol#L92-L95](https://github.com/Buffer-Finance/Buffer-Protocol-v2_5/blob/84b6060b4447b2550de595202e8820c7f515988b/contracts/core/Booster.sol#L92-L95)
 
         uint256 price = couponPrice - discount;
-        require(token.balanceOf(user) >= price, "Not enough balance");
+        re[Title](command:workbench.action.addRootFolder)quire(token.balanceOf(user) >= price, "Not enough balance");
 
         token.safeTransferFrom(user, address(this), couponPrice); <- @audit transfers couponPrice rather than price
 
@@ -279,11 +251,15 @@ When buying boosts the contract mistakenly transfers couponPrice rather than pri
 
 ### Recommendation
 
-Transfer price rather than couponPrice
+Transfer `price` rather than `couponPrice`
+
+### Remediation
+
+Mitigated [here](https://github.com/Buffer-Finance/Buffer-Protocol-v2_5/pull/5) by transferring `price` rather than `couponPrice`.
 
 ## [M-02] Transferred options can only be closed early by previous owner
 
-### Details
+### Details 
 
 [BufferRouter.sol#L197-L205](https://github.com/Buffer-Finance/Buffer-Protocol-v2_5/blob/84b6060b4447b2550de595202e8820c7f515988b/contracts/core/BufferRouter.sol#L197-L205)
 
@@ -299,8 +275,8 @@ Transfer price rather than couponPrice
 
 Options are minted as NFTs allowing options to be transferred to other users. This allows users to potentially sell/transfer their options to other user. This cause 2 issues:
 
-1. The previous owner can close the option early to cause damage to the new owner
-2. The new owner cannot close their option early by themselves
+1) The previous owner can close the option early to cause damage to the new owner
+2) The new owner cannot close their option early by themselves
 
 ### Lines of Code
 
@@ -310,29 +286,13 @@ Options are minted as NFTs allowing options to be transferred to other users. Th
 
 NFT functionality should be removed or closeAnytime should determine the signer based on the owner of the option NFT
 
-## [M-03] Platform fee is methodology is incompatible with the use of multiple vaults
+### Remediation
 
-### Details
-
-[BufferRouter.sol#L476-L478](https://github.com/Buffer-Finance/Buffer-Protocol-v2_5/blob/84b6060b4447b2550de595202e8820c7f515988b/contracts/core/BufferRouter.sol#L476-L478)
-
-        ERC20 tokenX = ERC20(optionsContract.tokenX());
-
-        tokenX.safeTransferFrom(user, admin, platformFee);
-
-BufferRouter#\_openTrade always transfers a flat fee from the user opening the option. This is problematic since tokenX can have a variety of decimals and values. As an example transferring 1e18 ARB is a few dollars while 1e18 USDC is trillions of dollars.
-
-### Lines of Code
-
-[BufferRouter.sol#L440-L513](https://github.com/Buffer-Finance/Buffer-Protocol-v2_5/blob/84b6060b4447b2550de595202e8820c7f515988b/contracts/core/BufferRouter.sol#L440-L513)
-
-### Recommendation
-
-Platform fee mechanism should be redesigned with this in mind
+Mitigated [here](https://github.com/Buffer-Finance/Buffer-Protocol-v2_5/pull/9/) by only allowing positions to be transferred to/from approved addresses.
 
 ## [L-01] Users can buy coupons for options that don't exist
 
-### Details
+### Details 
 
 Booster#buy allows users to buy boosts for any tokens, which means that user can pay for and buy useless boost for tokens that aren't listed.
 
@@ -344,37 +304,13 @@ Booster#buy allows users to buy boosts for any tokens, which means that user can
 
 Consider limiting boost purchases to only tokens currently listed for better UX
 
-## [L-02] Using a single IV value is restrictive and can unfairly price option payouts
+### Remediation
 
-### Details
+Mitigated [here](https://github.com/Buffer-Finance/Buffer-Protocol-v2_5/pull/13) the buy function was refactored to be callable only by owner and use permits for approval which negates the impact of this.
 
-https://github.com/Buffer-Finance/Buffer-Protocol-v2_5/blob/84b6060b4447b2550de595202e8820c7f515988b/contracts/core/BufferBinaryOptions.sol#L381-L391
+## [L-02] registerAccount sub-call in BufferRouter#openTrades can revert entire transaction
 
-            profit =
-                (option.lockedAmount *
-                    OptionMath.blackScholesPriceBinary(
-                        config.iv(),
-                        option.strike,
-                        closingPrice,
-                        option.expiration - closingTime,
-                        true,
-                        isAbove
-                    )) /
-                1e8;
-
-When determining profit the calculation always uses the same implied volatility. This is sub-optimal since a token like BTC will have much lower volatility than something like DOGE, causing them to be priced the same when they should be priced differently.
-
-### Lines of Code
-
-[BufferBinaryOptions.sol#L372-L401](https://github.com/Buffer-Finance/Buffer-Protocol-v2_5/blob/84b6060b4447b2550de595202e8820c7f515988b/contracts/core/BufferBinaryOptions.sol#L372-L401)
-
-### Recommendation
-
-Set the IV separately for each asset
-
-## [L-03] registerAccount sub-call in BufferRouter#openTrades can revert entire transaction
-
-### Details
+### Details 
 
 [BufferRouter.sol#L144-L150](https://github.com/Buffer-Finance/Buffer-Protocol-v2_5/blob/84b6060b4447b2550de595202e8820c7f515988b/contracts/core/BufferRouter.sol#L144-L150)
 
@@ -396,9 +332,13 @@ The openTrades function has been designed to prevent it from reverting under alm
 
 Consider using a try-catch block to prevent it from reverting
 
+### Remediation
+
+Mitigated [here](https://github.com/Buffer-Finance/Buffer-Protocol-v2_5/pull/12) by implementing a try-catch block
+
 ## [I-01] Booster#buy should support buying multiple boosts at a time
 
-### Details
+### Details 
 
 Booster#buy only allows the purchase of one boost at a time. Consider allowing users to bulk buy boosts to save transactions and gas.
 
@@ -410,11 +350,15 @@ Booster#buy only allows the purchase of one boost at a time. Consider allowing u
 
 Consider allowing multiple boosts to be purchased in a single transaction
 
-## [I-02] OptionMath#\_decay is never used
+### Remediation
 
-### Details
+Mitigated [here](https://github.com/Buffer-Finance/Buffer-Protocol-v2_5/pull/11) by allowing the user to buy multiple coupons in a single transaction
 
-OptionMath#\_decay is never used and should be removed
+## [I-02] OptionMath#_decay is never used
+
+### Details 
+
+OptionMath#_decay is never used and should be removed
 
 ### Lines of Code
 
@@ -422,4 +366,8 @@ OptionMath#\_decay is never used and should be removed
 
 ### Recommendation
 
-OptionMath#\_decay should be removed
+OptionMath#_decay should be removed
+
+### Remediation
+
+Mitigated [here](https://github.com/Buffer-Finance/Buffer-Protocol-v2_5/pull/10) by removing OptionMath#_decay
