@@ -63,7 +63,7 @@ def transact(
     attempts = 0
     max_attempts = 10
     delay = 2
-    gasPrice = int(3e9)
+    gasPrice = int(0.1e9)
     while attempts < max_attempts:
         try:
             nonce = web3.eth.getTransactionCount(sender.address)
