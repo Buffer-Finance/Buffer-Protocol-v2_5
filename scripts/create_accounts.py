@@ -1,16 +1,10 @@
 import os
-import time
 
-import brownie
 from brownie import (
     accounts,
-    network,
 )
 from colorama import Fore, Style
-from eth_account import Account
-from eth_account.messages import encode_defunct
 
-from .utility import deploy_contract, save_flat, transact
 
 
 def main():
@@ -25,6 +19,7 @@ def main():
     }
 
     super_admin = accounts.add(os.environ["BFR_PK"])
+    print(super_admin.balance() / 1e18)
     all_accounts = {}
     for account in funds:
         acc = accounts.add()
