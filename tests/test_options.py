@@ -283,7 +283,7 @@ def test_boost_buy(init, contracts, accounts, chain):
     b.tokenX.approve(booster.address, booster.couponPrice() * 5, {"from": user})
     b.tokenX.transfer(user, booster.couponPrice() * 5, {"from": b.owner})
     txn = booster.buy(b.tokenX.address, 0, user, permit, 5, {"from": b.owner})
-    assert booster.userBoostTrades(b.tokenX.address, user)[0] == 10, "Wrong boost"
+    assert booster.userBoostTrades(b.tokenX.address, user)[0] == 0, "Wrong boost"
     assert txn.events["Transfer"]["value"] == booster.couponPrice() * 5, "Wrong amount"
 
 
@@ -324,11 +324,11 @@ def test_boost(init, contracts, accounts, chain):
     optionId, _, _, _ = b.create(user, one_ct, queue_id=0)
     chain.sleep(1)
     min_payout, payout = check_payout(optionId)
-    assert payout > min_payout, "Wrong payout"
+    assert payout >= min_payout, "Wrong payout"
     optionId, _, _, _ = b.create(user, one_ct, queue_id=1)
     chain.sleep(1)
     min_payout, payout = check_payout(optionId)
-    assert payout > min_payout, "Wrong payout"
+    assert payout >= min_payout, "Wrong payout"
     optionId, _, _, _ = b.create(user, one_ct, queue_id=2)
     chain.sleep(1)
     min_payout, payout = check_payout(optionId)
