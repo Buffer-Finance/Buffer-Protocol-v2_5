@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 pragma solidity 0.8.4;
-import "../Libraries/ABDKMath64x64.sol";
+import "../lib/ABDKMath64x64.sol";
 
 library OptionMath {
     using ABDKMath64x64 for int128;
