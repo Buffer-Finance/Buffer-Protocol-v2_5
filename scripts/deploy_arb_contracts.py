@@ -194,10 +194,6 @@ def main():
         admin = accounts.add(os.environ["BFR_PK"])
         config_setter = accounts.add(os.environ["CONFIG_SETTER_PK"])
 
-        # print("Funding the keepers")
-        # admin.transfer(open_keeper, "0.4 ether")
-        # admin.transfer(close_keeper, "0.4 ether")
-
         token_contract_address = "0x912CE59144191C1204E64559FE8253a0e49E6548"
         sfd = "0x8480AD5f92A4B4e3a891454e94505666B0cd1858"
 

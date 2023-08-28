@@ -215,11 +215,11 @@ def main():
         nft_deployer = accounts.add(os.environ["NFT_DEPLOYER_PRIVATE_KEY"])
         publisher = "0x2156972c36088AA94fAeF84359C75FB4Bb83c745"
 
-        open_keeper = "0x1A5A1e1683F304500AC03b0FA14Eb5987f6734d6"
-        close_keeper = "0xc660D7126cA88bef96e65373B3d10368Cb683B46"
-        revoke_keeper = "0xc660D7126cA88bef96e65373B3d10368Cb683B46"
-        early_close_keeper = "0xc660D7126cA88bef96e65373B3d10368Cb683B46"
-        sf_publisher = "0xFbEA9559AE33214a080c03c68EcF1D3AF0f58A7D"
+        open_keeper = ""
+        close_keeper = ""
+        revoke_keeper = ""
+        early_close_keeper = ""
+        sf_publisher = ""
 
         token_contract_address = "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8"
         sfd = "0x7912BC879a6AE9947b85b203BE47346de56442aB"
