@@ -13,20 +13,6 @@ from eth_account.messages import encode_defunct
 from .utility import deploy_contract, save_flat, transact
 
 
-def get_signature(timestamp, token, price, publisher):
-    web3 = brownie.network.web3
-    key = publisher.private_key
-    msg_hash = web3.solidityKeccak(
-        ["uint256", "address", "uint256"], [timestamp, token, int(price)]
-    )
-    signed_message = Account.sign_message(encode_defunct(msg_hash), key)
-
-    def to_32byte_hex(val):
-        return web3.toHex(web3.toBytes(val).rjust(32, b"\0"))
-
-    return to_32byte_hex(signed_message.signature)
-
-
 def main():
     funds = {
         "open_keeper": "1 ether",
