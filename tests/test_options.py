@@ -210,23 +210,24 @@ def test_wrong_sf(init, contracts, accounts, chain):
 def test_creation_window(init, contracts, accounts, chain):
     b, user, one_ct, _ = init
     period = 5 * 60
-    b.check_trading_window(6, 17, 0, period, False)  # Saturday 17:00 (5m)
+
+    b.check_trading_window(6, 22, 0, period, False)  # Saturday 22:00 (5m)
     b.check_trading_window(0, 15, 0, period, False)  # Sunday 15:00 (5m)
-    b.check_trading_window(0, 16, 59, period, False)  # Sunday 16:59 (5m)
-    b.check_trading_window(0, 17, 0, period, True)  # Sunday 17:00   (5m)
     b.check_trading_window(0, 21, 59, period, False)  # Sunday 21:59 (5m)
-    b.check_trading_window(0, 22, 0, period, False)  # Sunday 22:00  (5m)
+    b.check_trading_window(0, 22, 0, period, True)  # Sunday 22:00   (5m)
+    b.check_trading_window(0, 22, 59, period, True)  # Sunday 22:59 (5m)
+    b.check_trading_window(0, 22, 0, period, True)  # Sunday 22:00  (5m)
     b.check_trading_window(0, 23, 0, period, True)  # Sunday 23:00   (5m)
-    b.check_trading_window(0, 23, 0, 23 * 3600, False)  # Sunday 23:00 (23h)
+    b.check_trading_window(0, 23, 0, 23 * 3600, True)  # Sunday 23:00 (23h)
     b.check_trading_window(0, 23, 0, (23 * 3600) - 1, True)  # Sunday 23:00 (22.59)
-    b.check_trading_window(1, 21, 30, (30 * 60), False)  # Monday 21:30 (30m)
+    b.check_trading_window(1, 21, 30, (30 * 60), True)  # Monday 21:30 (30m)
     b.check_trading_window(1, 21, 30, (30 * 60) - 1, True)  # Monday 21:30 (29.59m)
-    b.check_trading_window(1, 22, 0, (30 * 60), False)  # Monday 22:00 (30m)
+    b.check_trading_window(1, 22, 0, (30 * 60), True)  # Monday 22:00 (30m)
     b.check_trading_window(1, 23, 0, (2 * 3600), True)  # Monday 23:00 (2h)
     b.check_trading_window(2, 1, 0, (2 * 3600), True)  # Tuesday 1:00 (2h)
-    b.check_trading_window(5, 16, 30, (30 * 60), False)  # Friday 16:30 (30m)
-    b.check_trading_window(5, 16, 30, (30 * 60) - 1, True)  # Friday 16:30 (29.59m)
-    b.check_trading_window(5, 18, 0, (30 * 60), False)  # Friday 18:00 (30m)
+    b.check_trading_window(5, 19, 30, (30 * 60), False)  # Friday 19:30 (30m)
+    b.check_trading_window(5, 19, 30, (30 * 60) - 1, True)  # Friday 19:30 (29.59m)
+    b.check_trading_window(5, 20, 0, (30 * 60), False)  # Friday 18:00 (30m)
 
 
 def test_referral(init, contracts, accounts, chain):
