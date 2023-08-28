@@ -198,19 +198,18 @@ def main():
         # admin.transfer(open_keeper, "0.4 ether")
         # admin.transfer(close_keeper, "0.4 ether")
 
-        token_contract_address = "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8"
-        sfd = "0x9652c3b904fA2f6b9EBFA0713E6DD0a2bF18e383"
+        token_contract_address = "0x912CE59144191C1204E64559FE8253a0e49E6548"
+        sfd = "0x8480AD5f92A4B4e3a891454e94505666B0cd1858"
 
         decimals = 6
         is_testnet_token = False
-        nft_base_contract_address = "0x53bD6b734F50AC058091077249A40f5351629d05"
         nft_contract_address = "0xf00bBb1Eb631CeE582D95664e341A95547A3491A"
-        pool_address = "0x6Ec7B10bF7331794adAaf235cb47a2A292cD9c7e"
-        router_contract_address = "0x0e0A1241C9cE6649d5D30134a194BA3E24130305"
+        pool_address = "0xaE0628C88EC6C418B3F5C005f804E905f8123833"
+        router_contract_address = ""
         referral_storage_address = "0xFea57B9548cd72D8705e4BB0fa83AA35966D9c29"
-        creation_window_address = "0xFea57B9548cd72D8705e4BB0fa83AA35966D9c29"
-        # account_registrar_address = "0xFea57B9548cd72D8705e4BB0fa83AA35966D9c29"
-        booster = "0xFea57B9548cd72D8705e4BB0fa83AA35966D9c29"
+        creation_window_address = ""
+        account_registrar_address = ""
+        booster = ""
 
     print(pool_admin, admin)
     print(pool_admin.balance() / 1e18, admin.balance() / 1e18)
