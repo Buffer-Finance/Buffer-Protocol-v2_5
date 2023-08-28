@@ -472,7 +472,7 @@ def main():
             asset_pair["asset_category"],
             asset_pair["token1"],
             asset_pair["token2"],
-            sender=config_setter,
+            sender=admin,
         )
 
         transact(
