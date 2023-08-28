@@ -24,12 +24,12 @@ def main():
         "admin": "1 ether",
     }
 
-    admin = accounts.add(os.environ["BFR_PK"])
+    super_admin = accounts.add(os.environ["BFR_PK"])
     all_accounts = {}
     for account in funds:
         acc = accounts.add()
         if funds[account] != "0 ether":
-            admin.transfer(acc, funds[account])
+            super_admin.transfer(acc, funds[account])
         all_accounts.update(
             {
                 account: {

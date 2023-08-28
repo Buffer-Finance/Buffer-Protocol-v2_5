@@ -209,7 +209,10 @@ def main():
 
     print(pool_admin, admin)
     print(pool_admin.balance() / 1e18, admin.balance() / 1e18)
-
+    
+    initial_balance_admin = admin.balance()
+    initial_balance_config_setter = config_setter.balance()
+    
     ########### Get TokenX ###########
     if not token_contract_address:
         token_contract = deploy_contract(
@@ -581,3 +584,7 @@ def main():
     }
 
     print(all_contractss)
+    print(
+        initial_balance_admin - admin.balance(),
+        initial_balance_config_setter - config_setter.balance(),
+    )
